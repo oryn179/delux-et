@@ -1,9 +1,11 @@
-import { Search, MapPin, Home, ChevronDown } from "lucide-react";
+import { Search, MapPin, Home, ChevronDown, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-home.jpg";
 
 export function Hero() {
+  const navigate = useNavigate();
+
   return (
     <section className="relative min-h-[90vh] flex items-center gradient-hero overflow-hidden">
       {/* Decorative Elements */}
@@ -22,21 +24,38 @@ export function Hero() {
                 <span className="text-gradient">with Free</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-lg">
-                Delux is the brand new connection working in Ethiopia offering fully furnished homes
-                for free in Addis Ababa. No agents, no payments — just connection.
+                Find homes in Ethiopia with no fees, no agents, and no payments. 
+                Delux connects people directly — simple, fast, and free.
               </p>
             </div>
 
+            {/* Short Description */}
+            <p className="text-sm text-muted-foreground border-l-2 border-primary pl-4">
+              Delux is a community-driven housing platform in Ethiopia. 
+              We help people find and list homes without charging any money.
+            </p>
+
             {/* Search Box */}
             <div className="bg-card rounded-2xl p-4 shadow-elevated border border-border">
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid sm:grid-cols-4 gap-3">
                 <div className="relative">
                   <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <select className="w-full h-11 pl-10 pr-8 rounded-lg bg-secondary border-0 text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20">
                     <option>Property Type</option>
                     <option>Apartment</option>
                     <option>House</option>
-                    <option>Villa</option>
+                    <option>Villa 🏡</option>
+                    <option>Real Estate</option>
+                    <option>G+1</option>
+                    <option>G+2 to G+10</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select className="w-full h-11 px-3 rounded-lg bg-secondary border-0 text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20">
+                    <option>Rent / Sell</option>
+                    <option>For Rent</option>
+                    <option>For Sell</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 </div>
@@ -46,8 +65,10 @@ export function Hero() {
                     <option>Location</option>
                     <option>Bole</option>
                     <option>Kazanchis</option>
-                    <option>Piassa</option>
-                    <option>Arada</option>
+                    <option>Piassa Arada</option>
+                    <option>CMC</option>
+                    <option>Megenagna</option>
+                    <option>Sidist Kilo</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 </div>
@@ -60,11 +81,20 @@ export function Hero() {
 
             {/* Quick Links */}
             <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" size="sm" className="rounded-full">
-                Browse Free Listings
+              <Button 
+                size="lg" 
+                className="gradient-primary border-0 gap-2"
+                onClick={() => navigate("/#listings")}
+              >
+                Browse Free Homes
+                <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full">
-                List Your Property
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={() => navigate("/list-property")}
+              >
+                List Your Home
               </Button>
             </div>
 

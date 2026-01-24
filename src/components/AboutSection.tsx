@@ -1,20 +1,22 @@
-import { Target, Eye, Percent, Users, MapPin, Shield } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Target, Eye, Percent, Users, MapPin, Shield, Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const features = [
   {
     icon: Percent,
     title: "100% Free",
-    description: "No fees, no payments. Delux connects people, not wallets.",
+    description: "No fees or hidden costs. Delux connects people, not wallets.",
   },
   {
     icon: Users,
-    title: "Community Powered",
-    description: "Built for people, by people. Everyone can participate.",
+    title: "Direct Connection",
+    description: "Talk directly to homeowners. No middlemen.",
   },
   {
     icon: MapPin,
-    title: "Ethiopia Focused",
-    description: "Designed for local housing needs in Addis Ababa.",
+    title: "Community First",
+    description: "Built for Ethiopian users by the community.",
   },
   {
     icon: Shield,
@@ -24,6 +26,8 @@ const features = [
 ];
 
 export function AboutSection() {
+  const navigate = useNavigate();
+
   return (
     <section id="about" className="py-20">
       <div className="container">
@@ -32,53 +36,22 @@ export function AboutSection() {
           <div className="space-y-8">
             <div>
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-                About <span className="text-gradient">Delux</span>
+                Why Choose <span className="text-gradient">Delux</span>?
               </h2>
               <p className="text-lg text-muted-foreground">
-                Get your home with free
+                Your trusted housing connection in Ethiopia
               </p>
             </div>
 
-            <p className="text-muted-foreground leading-relaxed">
-              Delux is a brand-new community-driven platform working in Ethiopia. 
-              We connect people with homes at no cost. No payments. No agents. Just connection.
-              Our mission is to make housing accessible to everyone in Ethiopia.
-            </p>
-
-            {/* Mission & Vision */}
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
-                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
-                  <Target className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <h3 className="font-semibold mb-2">Our Mission</h3>
-                <p className="text-sm text-muted-foreground">
-                  To build Ethiopia's most trusted free housing connection platform.
-                </p>
-              </div>
-              <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
-                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
-                  <Eye className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <h3 className="font-semibold mb-2">Our Vision</h3>
-                <p className="text-sm text-muted-foreground">
-                  Empowering every Ethiopian to find their perfect home freely.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Features */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold mb-6">Why Delux?</h3>
+            {/* Features Grid */}
             <div className="grid sm:grid-cols-2 gap-4">
               {features.map((feature, index) => (
                 <div
                   key={feature.title}
-                  className="bg-card rounded-2xl p-6 shadow-card border border-border hover:shadow-elevated transition-shadow animate-fade-in"
+                  className="bg-card rounded-2xl p-5 shadow-card border border-border hover:shadow-elevated transition-shadow animate-fade-in"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center mb-3">
                     <feature.icon className="h-5 w-5 text-primary" />
                   </div>
                   <h4 className="font-semibold mb-1">{feature.title}</h4>
@@ -86,6 +59,31 @@ export function AboutSection() {
                 </div>
               ))}
             </div>
+
+            <Button variant="outline" onClick={() => navigate("/about")}>
+              Learn More About Delux
+            </Button>
+          </div>
+
+          {/* Right - CTA Card */}
+          <div className="bg-card rounded-3xl p-8 md:p-10 shadow-elevated border border-border">
+            <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mb-6">
+              <Home className="h-8 w-8 text-primary-foreground" />
+            </div>
+            <h3 className="text-2xl md:text-3xl font-display font-bold mb-4">
+              Own a Home?
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              List your home for rent or sale — free and easy. 
+              Connect with home seekers across Ethiopia without any fees.
+            </p>
+            <Button 
+              size="lg" 
+              className="gradient-primary border-0 w-full sm:w-auto"
+              onClick={() => navigate("/list-property")}
+            >
+              Homeowner? List Now
+            </Button>
           </div>
         </div>
       </div>
