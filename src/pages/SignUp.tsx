@@ -15,10 +15,8 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showSocialForm, setShowSocialForm] = useState(false);
-  const [socialProvider, setSocialProvider] = useState<"google" | "github" | null>(null);
 
-  const { signup, loginWithGoogle, loginWithGithub } = useAuth();
+  const { signUp, signInWithGoogle, signInWithGithub } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -27,16 +25,17 @@ export default function SignUp() {
     setIsLoading(true);
 
     try {
-      await signup(email, password, phone, name);
+      await signUp(email, password, { name, phone });
       toast({
         title: "Account created!",
         description: "Welcome to Delux. Start exploring homes now.",
       });
       navigate("/");
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to create account.";
       toast({
         title: "Error",
-        description: "Failed to create account. Please try again.",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -44,117 +43,31 @@ export default function SignUp() {
     }
   };
 
-  const handleSocialSignup = async () => {
-    if (!name || !phone) {
-      toast({
-        title: "Missing information",
-        description: "Please provide your name and phone number.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
+  const handleGoogleSignup = async () => {
     try {
-      if (socialProvider === "google") {
-        await loginWithGoogle();
-      } else {
-        await loginWithGithub();
-      }
-      toast({
-        title: "Account created!",
-        description: "More verification coming soon.",
-      });
-      navigate("/");
-    } catch (error) {
+      await signInWithGoogle();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Google sign up failed.";
       toast({
         title: "Error",
-        description: "Failed to create account. Please try again.",
+        description: message,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const initiateSocialSignup = (provider: "google" | "github") => {
-    setSocialProvider(provider);
-    setShowSocialForm(true);
+  const handleGithubSignup = async () => {
+    try {
+      await signInWithGithub();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "GitHub sign up failed.";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    }
   };
-
-  if (showSocialForm) {
-    return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <Link to="/">
-              <img src={deluxLogo} alt="Delux" className="h-12 mx-auto mb-4" />
-            </Link>
-            <h1 className="text-2xl font-display font-bold">Complete Your Profile</h1>
-            <p className="text-muted-foreground">
-              {socialProvider === "google" ? "Google" : "GitHub"} sign up requires additional info
-            </p>
-          </div>
-
-          <div className="bg-card rounded-2xl p-6 md:p-8 shadow-elevated border border-border">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="socialName">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="socialName"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="socialPhone">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="socialPhone"
-                    type="tel"
-                    placeholder="+251 91 234 5678"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="bg-accent/50 rounded-lg p-3 text-sm text-muted-foreground">
-                <p>📌 More verification coming soon</p>
-              </div>
-
-              <Button
-                onClick={handleSocialSignup}
-                className="w-full gradient-primary border-0"
-                disabled={isLoading}
-              >
-                {isLoading ? "Creating account..." : "Complete Sign Up"}
-              </Button>
-
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={() => setShowSocialForm(false)}
-              >
-                Back to Sign Up
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
@@ -226,10 +139,11 @@ export default function SignUp() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a password"
+                  placeholder="Create a password (min 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
+                  minLength={6}
                   required
                 />
                 <button
@@ -261,7 +175,7 @@ export default function SignUp() {
               type="button"
               variant="outline"
               className="w-full gap-2"
-              onClick={() => initiateSocialSignup("google")}
+              onClick={handleGoogleSignup}
               disabled={isLoading}
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24">
@@ -288,7 +202,7 @@ export default function SignUp() {
               type="button"
               variant="outline"
               className="w-full gap-2"
-              onClick={() => initiateSocialSignup("github")}
+              onClick={handleGithubSignup}
               disabled={isLoading}
             >
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
@@ -307,9 +221,13 @@ export default function SignUp() {
 
           <p className="text-center text-xs text-muted-foreground mt-4">
             By signing up, you agree to our{" "}
-            <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+            <Link to="/terms" className="text-primary hover:underline">
+              Terms of Service
+            </Link>
             {" & "}
-            <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+            <Link to="/privacy" className="text-primary hover:underline">
+              Privacy Policy
+            </Link>
           </p>
         </div>
       </div>

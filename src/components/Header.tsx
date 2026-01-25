@@ -4,6 +4,7 @@ import { Menu, X, User, Heart, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,11 +23,15 @@ const navLinks = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, signOut } = useAuth();
+  const { data: profile } = useProfile(user?.id);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const displayName = profile?.name || user?.email?.split("@")[0] || "User";
+  const initial = displayName.charAt(0).toUpperCase();
+
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 
@@ -70,9 +75,9 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2">
                     <div className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-                      {user?.name.charAt(0).toUpperCase()}
+                      {initial}
                     </div>
-                    {user?.name.split(" ")[0]}
+                    {displayName.split(" ")[0]}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">

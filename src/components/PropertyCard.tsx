@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface PropertyCardProps {
-  id: number;
+  id: string;
   image: string;
   title: string;
   location: string;
