@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, Mail, Phone, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,33 +9,34 @@ import { useToast } from "@/hooks/use-toast";
 import deluxLogo from "@/assets/delux-logo.png";
 
 export default function SignIn() {
-  const [emailOrPhone, setEmailOrPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const { login, loginWithGoogle, loginWithGithub } = useAuth();
+
+  const { signIn, signInWithGoogle, signInWithGithub } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as any)?.from?.pathname || "/";
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-      await login(emailOrPhone, password);
+      await signIn(email, password);
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
       navigate(from, { replace: true });
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Invalid credentials. Please try again.";
       toast({
         title: "Error",
-        description: "Invalid credentials. Please try again.",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -44,42 +45,28 @@ export default function SignIn() {
   };
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
     try {
-      await loginWithGoogle();
-      toast({
-        title: "Welcome!",
-        description: "You have successfully signed in with Google.",
-      });
-      navigate(from, { replace: true });
-    } catch (error) {
+      await signInWithGoogle();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Google sign in failed.";
       toast({
         title: "Error",
-        description: "Google sign in failed. Please try again.",
+        description: message,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleGithubLogin = async () => {
-    setIsLoading(true);
     try {
-      await loginWithGithub();
-      toast({
-        title: "Welcome!",
-        description: "You have successfully signed in with GitHub.",
-      });
-      navigate(from, { replace: true });
-    } catch (error) {
+      await signInWithGithub();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "GitHub sign in failed.";
       toast({
         title: "Error",
-        description: "GitHub sign in failed. Please try again.",
+        description: message,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -99,15 +86,15 @@ export default function SignIn() {
         <div className="bg-card rounded-2xl p-6 md:p-8 shadow-elevated border border-border">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="emailOrPhone">Phone Number or Email</Label>
+              <Label htmlFor="email">Email Address</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="emailOrPhone"
-                  type="text"
-                  placeholder="Enter phone or email"
-                  value={emailOrPhone}
-                  onChange={(e) => setEmailOrPhone(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   required
                 />
@@ -135,12 +122,6 @@ export default function SignIn() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </div>
-
-            <div className="text-right">
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </Link>
             </div>
 
             <Button type="submit" className="w-full gradient-primary border-0" disabled={isLoading}>
@@ -208,9 +189,13 @@ export default function SignIn() {
 
           <p className="text-center text-xs text-muted-foreground mt-4">
             By signing in, you agree to our{" "}
-            <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+            <Link to="/terms" className="text-primary hover:underline">
+              Terms of Service
+            </Link>
             {" & "}
-            <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+            <Link to="/privacy" className="text-primary hover:underline">
+              Privacy Policy
+            </Link>
           </p>
         </div>
       </div>

@@ -1,50 +1,58 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
+import { useAuth } from "./AuthContext";
+import { useFavorites as useFavoritesQuery, useAddFavorite, useRemoveFavorite } from "@/hooks/useFavorites";
 
 interface FavoritesContextType {
-  favorites: number[];
-  addFavorite: (id: number) => void;
-  removeFavorite: (id: number) => void;
-  isFavorite: (id: number) => boolean;
-  toggleFavorite: (id: number) => void;
+  favorites: string[];
+  isLoading: boolean;
+  addFavorite: (id: string) => void;
+  removeFavorite: (id: string) => void;
+  isFavorite: (id: string) => boolean;
+  toggleFavorite: (id: string) => void;
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const { user } = useAuth();
+  const { data: favoritesData, isLoading } = useFavoritesQuery(user?.id);
+  const addFavoriteMutation = useAddFavorite();
+  const removeFavoriteMutation = useRemoveFavorite();
 
-  useEffect(() => {
-    const stored = localStorage.getItem("delux-favorites");
-    if (stored) {
-      setFavorites(JSON.parse(stored));
-    }
-  }, []);
+  const favorites = favoritesData?.map((f) => f.property_id) ?? [];
 
-  const addFavorite = (id: number) => {
-    const updated = [...favorites, id];
-    setFavorites(updated);
-    localStorage.setItem("delux-favorites", JSON.stringify(updated));
+  const addFavorite = (propertyId: string) => {
+    if (!user) return;
+    addFavoriteMutation.mutate({ userId: user.id, propertyId });
   };
 
-  const removeFavorite = (id: number) => {
-    const updated = favorites.filter((fav) => fav !== id);
-    setFavorites(updated);
-    localStorage.setItem("delux-favorites", JSON.stringify(updated));
+  const removeFavorite = (propertyId: string) => {
+    if (!user) return;
+    removeFavoriteMutation.mutate({ userId: user.id, propertyId });
   };
 
-  const isFavorite = (id: number) => favorites.includes(id);
+  const isFavorite = (propertyId: string) => {
+    return favorites.includes(propertyId);
+  };
 
-  const toggleFavorite = (id: number) => {
-    if (isFavorite(id)) {
-      removeFavorite(id);
+  const toggleFavorite = (propertyId: string) => {
+    if (isFavorite(propertyId)) {
+      removeFavorite(propertyId);
     } else {
-      addFavorite(id);
+      addFavorite(propertyId);
     }
   };
 
   return (
     <FavoritesContext.Provider
-      value={{ favorites, addFavorite, removeFavorite, isFavorite, toggleFavorite }}
+      value={{
+        favorites,
+        isLoading,
+        addFavorite,
+        removeFavorite,
+        isFavorite,
+        toggleFavorite,
+      }}
     >
       {children}
     </FavoritesContext.Provider>

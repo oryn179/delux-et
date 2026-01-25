@@ -1,130 +1,103 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar?: string;
-}
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  loginWithGithub: () => Promise<void>;
-  signup: (email: string, password: string, phone: string, name: string) => Promise<void>;
-  logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
+  signUp: (email: string, password: string, metadata?: { name?: string; phone?: string }) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithGithub: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user on mount
-    const storedUser = localStorage.getItem("delux-user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // Mock login - in production, this would call an API
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: "1",
-      name: "Demo User",
+  const signUp = async (email: string, password: string, metadata?: { name?: string; phone?: string }) => {
+    const { error } = await supabase.auth.signUp({
       email,
-      phone: "+251 91 234 5678",
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem("delux-user", JSON.stringify(mockUser));
-    setIsLoading(false);
+      password,
+      options: {
+        data: metadata,
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
   };
 
-  const loginWithGoogle = async () => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: "2",
-      name: "Google User",
-      email: "google.user@gmail.com",
-      phone: "",
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem("delux-user", JSON.stringify(mockUser));
-    setIsLoading(false);
-  };
-
-  const loginWithGithub = async () => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: "3",
-      name: "GitHub User",
-      email: "github.user@example.com",
-      phone: "",
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem("delux-user", JSON.stringify(mockUser));
-    setIsLoading(false);
-  };
-
-  const signup = async (email: string, password: string, phone: string, name: string) => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: Date.now().toString(),
-      name,
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
       email,
-      phone,
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem("delux-user", JSON.stringify(mockUser));
-    setIsLoading(false);
+      password,
+    });
+    if (error) throw error;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("delux-user");
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
   };
 
-  const updateProfile = (updates: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem("delux-user", JSON.stringify(updatedUser));
-    }
+  const signInWithGithub = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
+  };
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        session,
         isAuthenticated: !!user,
         isLoading,
-        login,
-        loginWithGoogle,
-        loginWithGithub,
-        signup,
-        logout,
-        updateProfile,
+        signUp,
+        signIn,
+        signInWithGoogle,
+        signInWithGithub,
+        signOut,
       }}
     >
       {children}

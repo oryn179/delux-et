@@ -1,10 +1,33 @@
+import { useState } from "react";
 import { Search, MapPin, Home, ChevronDown, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-home.jpg";
 
-export function Hero() {
+interface HeroProps {
+  onSearch?: (filters: {
+    propertyType: string;
+    listingType: string;
+    area: string;
+  }) => void;
+}
+
+export function Hero({ onSearch }: HeroProps) {
   const navigate = useNavigate();
+  const [propertyType, setPropertyType] = useState("Property Type");
+  const [listingType, setListingType] = useState("Rent / Sell");
+  const [area, setArea] = useState("Location");
+
+  const handleSearch = () => {
+    if (onSearch) {
+      onSearch({ propertyType, listingType, area });
+    }
+    // Scroll to listings section
+    const listingsSection = document.getElementById("listings");
+    if (listingsSection) {
+      listingsSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
     <section className="relative min-h-[90vh] flex items-center gradient-hero overflow-hidden">
@@ -40,19 +63,25 @@ export function Hero() {
               <div className="grid sm:grid-cols-4 gap-3">
                 <div className="relative">
                   <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <select className="w-full h-11 pl-10 pr-8 rounded-lg bg-secondary border-0 text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20">
+                  <select 
+                    value={propertyType}
+                    onChange={(e) => setPropertyType(e.target.value)}
+                    className="w-full h-11 pl-10 pr-8 rounded-lg bg-secondary border-0 text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  >
                     <option>Property Type</option>
                     <option>Apartment</option>
                     <option>House</option>
                     <option>Villa 🏡</option>
                     <option>Real Estate</option>
-                    <option>G+1</option>
-                    <option>G+2 to G+10</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 </div>
                 <div className="relative">
-                  <select className="w-full h-11 px-3 rounded-lg bg-secondary border-0 text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20">
+                  <select 
+                    value={listingType}
+                    onChange={(e) => setListingType(e.target.value)}
+                    className="w-full h-11 px-3 rounded-lg bg-secondary border-0 text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  >
                     <option>Rent / Sell</option>
                     <option>For Rent</option>
                     <option>For Sell</option>
@@ -61,7 +90,11 @@ export function Hero() {
                 </div>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <select className="w-full h-11 pl-10 pr-8 rounded-lg bg-secondary border-0 text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20">
+                  <select 
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    className="w-full h-11 pl-10 pr-8 rounded-lg bg-secondary border-0 text-sm font-medium appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  >
                     <option>Location</option>
                     <option>Bole</option>
                     <option>Kazanchis</option>
@@ -72,7 +105,7 @@ export function Hero() {
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 </div>
-                <Button className="h-11 gradient-primary border-0 gap-2">
+                <Button onClick={handleSearch} className="h-11 gradient-primary border-0 gap-2">
                   <Search className="h-4 w-4" />
                   Search
                 </Button>
@@ -84,7 +117,12 @@ export function Hero() {
               <Button 
                 size="lg" 
                 className="gradient-primary border-0 gap-2"
-                onClick={() => navigate("/#listings")}
+                onClick={() => {
+                  const listingsSection = document.getElementById("listings");
+                  if (listingsSection) {
+                    listingsSection.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
               >
                 Browse Free Homes
                 <ArrowRight className="h-4 w-4" />

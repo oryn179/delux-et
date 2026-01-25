@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, DollarSign, MapPin, Bed, Bath, Upload, Check } from "lucide-react";
+import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCreateProperty, useUploadPropertyImage, useAddPropertyImage } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
 
 const steps = [
   { id: 1, title: "Type", icon: Home },
@@ -17,7 +19,7 @@ const steps = [
   { id: 4, title: "Images", icon: Upload },
 ];
 
-const propertyTypes = [
+const propertyTypes: { value: Database["public"]["Enums"]["property_type"]; label: string; icon: string }[] = [
   { value: "apartment", label: "Apartment", icon: "🏢" },
   { value: "house", label: "House", icon: "🏠" },
   { value: "villa", label: "Villa", icon: "🏡" },
@@ -29,19 +31,27 @@ const areas = ["Bole", "Piassa Arada", "Kazanchis", "CMC", "Megenagna", "Sidist 
 
 export default function ListProperty() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const createProperty = useCreateProperty();
+  const uploadImage = useUploadPropertyImage();
+  const addPropertyImage = useAddPropertyImage();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [listingType, setListingType] = useState<"rent" | "sell" | null>(null);
-  const [propertyType, setPropertyType] = useState("");
+  const [listingType, setListingType] = useState<Database["public"]["Enums"]["listing_type"] | null>(null);
+  const [propertyType, setPropertyType] = useState<Database["public"]["Enums"]["property_type"] | null>(null);
   const [city, setCity] = useState("");
   const [area, setArea] = useState("");
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
   const [furnished, setFurnished] = useState<boolean | null>(null);
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isAuthenticated) {
     return (
@@ -53,16 +63,10 @@ export default function ListProperty() {
               <Home className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-2xl font-display font-bold mb-2">Sign In Required</h1>
-            <p className="text-muted-foreground mb-6">
-              Please sign in to list your property.
-            </p>
+            <p className="text-muted-foreground mb-6">Please sign in to list your property.</p>
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => navigate("/")}>
-                Go Home
-              </Button>
-              <Button onClick={() => navigate("/signin")} className="gradient-primary border-0">
-                Sign In
-              </Button>
+              <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
+              <Button onClick={() => navigate("/signin")} className="gradient-primary border-0">Sign In</Button>
             </div>
           </div>
         </main>
@@ -71,12 +75,80 @@ export default function ListProperty() {
     );
   }
 
-  const handleSubmit = () => {
-    toast({
-      title: "Listing Created!",
-      description: "Your property has been listed successfully. (Demo mode)",
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length + images.length > 5) {
+      toast({ title: "Too many images", description: "Maximum 5 images allowed.", variant: "destructive" });
+      return;
+    }
+
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast({ title: "Invalid file", description: `${file.name} is not an image.`, variant: "destructive" });
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: "File too large", description: `${file.name} exceeds 5MB limit.`, variant: "destructive" });
+        return false;
+      }
+      return true;
     });
-    navigate("/profile");
+
+    setImages((prev) => [...prev, ...validFiles]);
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews((prev) => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async () => {
+    if (!user || !listingType || !propertyType || !area || !bedrooms || !bathrooms || furnished === null) {
+      toast({ title: "Missing information", description: "Please complete all required fields.", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Create property
+      const property = await createProperty.mutateAsync({
+        user_id: user.id,
+        title: title || `${propertyType.charAt(0).toUpperCase() + propertyType.slice(1)} in ${area}`,
+        description,
+        city: city || "Addis Ababa",
+        area,
+        bedrooms: parseInt(bedrooms),
+        bathrooms: parseInt(bathrooms),
+        listing_type: listingType,
+        property_type: propertyType,
+        furnished,
+      });
+
+      // Upload images
+      for (let i = 0; i < images.length; i++) {
+        const imageUrl = await uploadImage.mutateAsync({ file: images[i], userId: user.id });
+        await addPropertyImage.mutateAsync({
+          propertyId: property.id,
+          imageUrl,
+          isPrimary: i === 0,
+        });
+      }
+
+      toast({ title: "Listing Created!", description: "Your property has been listed successfully." });
+      navigate("/profile");
+    } catch (error) {
+      console.error("Error creating listing:", error);
+      toast({ title: "Error", description: "Failed to create listing. Please try again.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canProceed = () => {
@@ -99,13 +171,11 @@ export default function ListProperty() {
       <Header />
       <main className="flex-1 py-8 bg-secondary/30">
         <div className="container max-w-2xl">
-          {/* Back Button */}
           <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2 mb-6">
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
 
-          {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-display font-bold mb-2">List Your Home with Delux</h1>
             <p className="text-muted-foreground">Free. Simple. Trusted in Ethiopia.</p>
@@ -118,23 +188,13 @@ export default function ListProperty() {
                 <div key={step.id} className="flex items-center">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                      currentStep >= step.id
-                        ? "gradient-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                      currentStep >= step.id ? "gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                     }`}
                   >
-                    {currentStep > step.id ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <step.icon className="h-5 w-5" />
-                    )}
+                    {currentStep > step.id ? <Check className="h-5 w-5" /> : <step.icon className="h-5 w-5" />}
                   </div>
                   {index < steps.length - 1 && (
-                    <div
-                      className={`w-12 h-1 mx-1 rounded ${
-                        currentStep > step.id ? "bg-primary" : "bg-muted"
-                      }`}
-                    />
+                    <div className={`w-12 h-1 mx-1 rounded ${currentStep > step.id ? "bg-primary" : "bg-muted"}`} />
                   )}
                 </div>
               ))}
@@ -152,9 +212,7 @@ export default function ListProperty() {
                     <button
                       onClick={() => setListingType("rent")}
                       className={`p-6 rounded-xl border-2 transition-all text-center ${
-                        listingType === "rent"
-                          ? "border-primary bg-accent"
-                          : "border-border hover:border-primary/50"
+                        listingType === "rent" ? "border-primary bg-accent" : "border-border hover:border-primary/50"
                       }`}
                     >
                       <Home className="h-8 w-8 mx-auto mb-2 text-primary" />
@@ -164,9 +222,7 @@ export default function ListProperty() {
                     <button
                       onClick={() => setListingType("sell")}
                       className={`p-6 rounded-xl border-2 transition-all text-center ${
-                        listingType === "sell"
-                          ? "border-primary bg-accent"
-                          : "border-border hover:border-primary/50"
+                        listingType === "sell" ? "border-primary bg-accent" : "border-border hover:border-primary/50"
                       }`}
                     >
                       <DollarSign className="h-8 w-8 mx-auto mb-2 text-primary" />
@@ -184,9 +240,7 @@ export default function ListProperty() {
                         key={type.value}
                         onClick={() => setPropertyType(type.value)}
                         className={`p-4 rounded-xl border-2 transition-all text-left ${
-                          propertyType === type.value
-                            ? "border-primary bg-accent"
-                            : "border-border hover:border-primary/50"
+                          propertyType === type.value ? "border-primary bg-accent" : "border-border hover:border-primary/50"
                         }`}
                       >
                         <span className="text-2xl">{type.icon}</span>
@@ -202,7 +256,6 @@ export default function ListProperty() {
             {currentStep === 2 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold">Choose Property Location</h2>
-
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>City</Label>
@@ -213,13 +266,10 @@ export default function ListProperty() {
                     >
                       <option value="">Select city</option>
                       {cities.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
+                        <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Area</Label>
                     <select
@@ -229,9 +279,7 @@ export default function ListProperty() {
                     >
                       <option value="">Select area</option>
                       {areas.map((a) => (
-                        <option key={a} value={a}>
-                          {a}
-                        </option>
+                        <option key={a} value={a}>{a}</option>
                       ))}
                     </select>
                   </div>
@@ -244,6 +292,15 @@ export default function ListProperty() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold">Property Details</h2>
 
+                <div className="space-y-2">
+                  <Label>Title (optional)</Label>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Modern Family Home"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Bedrooms</Label>
@@ -254,13 +311,10 @@ export default function ListProperty() {
                     >
                       <option value="">Select</option>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                        <option key={n} value={n}>
-                          {n} {n === 1 ? "Bedroom" : "Bedrooms"}
-                        </option>
+                        <option key={n} value={n}>{n} {n === 1 ? "Bedroom" : "Bedrooms"}</option>
                       ))}
                     </select>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Bathrooms</Label>
                     <select
@@ -270,9 +324,7 @@ export default function ListProperty() {
                     >
                       <option value="">Select</option>
                       {[1, 2, 3, 4, 5].map((n) => (
-                        <option key={n} value={n}>
-                          {n} {n === 1 ? "Bathroom" : "Bathrooms"}
-                        </option>
+                        <option key={n} value={n}>{n} {n === 1 ? "Bathroom" : "Bathrooms"}</option>
                       ))}
                     </select>
                   </div>
@@ -284,9 +336,7 @@ export default function ListProperty() {
                     <button
                       onClick={() => setFurnished(true)}
                       className={`p-4 rounded-xl border-2 transition-all ${
-                        furnished === true
-                          ? "border-primary bg-accent"
-                          : "border-border hover:border-primary/50"
+                        furnished === true ? "border-primary bg-accent" : "border-border hover:border-primary/50"
                       }`}
                     >
                       <p className="font-medium">Furnished</p>
@@ -294,9 +344,7 @@ export default function ListProperty() {
                     <button
                       onClick={() => setFurnished(false)}
                       className={`p-4 rounded-xl border-2 transition-all ${
-                        furnished === false
-                          ? "border-primary bg-accent"
-                          : "border-border hover:border-primary/50"
+                        furnished === false ? "border-primary bg-accent" : "border-border hover:border-primary/50"
                       }`}
                     >
                       <p className="font-medium">Unfurnished</p>
@@ -321,17 +369,47 @@ export default function ListProperty() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold">Add Photos</h2>
 
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
-                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="font-medium mb-1">Upload Images</p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Drag and drop or click to browse
-                  </p>
-                  <Button variant="outline">Choose Files</Button>
-                  <p className="text-xs text-muted-foreground mt-4">
-                    Coming Soon: Image upload will be available with backend integration
-                  </p>
-                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+
+                {imagePreviews.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative aspect-video rounded-lg overflow-hidden group">
+                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeImage(index)}
+                          className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        {index === 0 && (
+                          <span className="absolute bottom-2 left-2 text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
+                            Primary
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {images.length < 5 && (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                  >
+                    <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="font-medium mb-1">Upload Images</p>
+                    <p className="text-sm text-muted-foreground mb-4">Click to browse or drag and drop</p>
+                    <p className="text-xs text-muted-foreground">Max 5 images, 5MB each</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -354,8 +432,19 @@ export default function ListProperty() {
                   Continue Listing
                 </Button>
               ) : (
-                <Button onClick={handleSubmit} className="gradient-primary border-0">
-                  Publish Listing
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="gradient-primary border-0"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    "Publish Listing"
+                  )}
                 </Button>
               )}
             </div>

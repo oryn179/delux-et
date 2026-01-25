@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
-import { getPropertyById } from "@/data/properties";
+import { useProperty } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PropertyDetails() {
@@ -17,10 +17,22 @@ export default function PropertyDetails() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
 
+  const { data: property, isLoading } = useProperty(id || "");
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showPhone, setShowPhone] = useState(false);
 
-  const property = getPropertyById(Number(id));
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!property) {
     return (
@@ -37,6 +49,8 @@ export default function PropertyDetails() {
       </div>
     );
   }
+
+  const images = property.property_images?.map((img) => img.image_url) ?? ["/placeholder.svg"];
 
   const handleViewPhone = () => {
     if (!isAuthenticated) {
@@ -69,11 +83,11 @@ export default function PropertyDetails() {
   };
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length);
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
   return (
@@ -95,21 +109,21 @@ export default function PropertyDetails() {
               {/* Main Image */}
               <div className="relative rounded-2xl overflow-hidden aspect-video bg-muted">
                 <img
-                  src={property.images[currentImageIndex]}
+                  src={images[currentImageIndex]}
                   alt={property.title}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-4 left-4 flex gap-2">
-                  {property.isFree && (
+                  {property.is_available && (
                     <Badge className="gradient-primary border-0 text-primary-foreground">Free</Badge>
                   )}
                   <Badge variant="secondary" className="capitalize">
-                    {property.type === "rent" ? "For Rent" : "For Sale"}
+                    {property.listing_type === "rent" ? "For Rent" : "For Sale"}
                   </Badge>
                 </div>
 
                 {/* Navigation Arrows */}
-                {property.images.length > 1 && (
+                {images.length > 1 && (
                   <>
                     <button
                       onClick={prevImage}
@@ -128,45 +142,51 @@ export default function PropertyDetails() {
 
                 {/* Image Counter */}
                 <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur rounded-full px-3 py-1 text-sm">
-                  {currentImageIndex + 1} / {property.images.length}
+                  {currentImageIndex + 1} / {images.length}
                 </div>
               </div>
 
               {/* Thumbnail Gallery */}
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {property.images.map((img, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                      currentImageIndex === index ? "border-primary" : "border-transparent"
-                    }`}
-                  >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
+              {images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {images.map((img, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
+                        currentImageIndex === index ? "border-primary" : "border-transparent"
+                      }`}
+                    >
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Description */}
               <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
                 <h2 className="text-xl font-semibold mb-4">Description</h2>
-                <p className="text-muted-foreground leading-relaxed">{property.description}</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  {property.description || "No description provided."}
+                </p>
               </div>
 
               {/* Features */}
-              <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
-                <h2 className="text-xl font-semibold mb-4">Features</h2>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {property.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
-                        <Check className="h-3 w-3 text-primary" />
+              {property.features && property.features.length > 0 && (
+                <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
+                  <h2 className="text-xl font-semibold mb-4">Features</h2>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {property.features.map((feature, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
+                          <Check className="h-3 w-3 text-primary" />
+                        </div>
+                        <span>{feature}</span>
                       </div>
-                      <span>{feature}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Right Column - Info & Actions */}
@@ -176,7 +196,7 @@ export default function PropertyDetails() {
                 <div className="space-y-4">
                   <div className="flex items-start gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4 mt-1 shrink-0" />
-                    <span>{property.location}</span>
+                    <span>{property.city}, {property.area}</span>
                   </div>
 
                   <h1 className="text-2xl font-display font-bold">{property.title}</h1>
@@ -194,7 +214,7 @@ export default function PropertyDetails() {
 
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary" className="capitalize">
-                      {property.propertyType}
+                      {property.property_type}
                     </Badge>
                     <Badge variant="secondary">
                       {property.furnished ? "Furnished" : "Unfurnished"}
@@ -211,8 +231,8 @@ export default function PropertyDetails() {
                       <div>
                         <p className="text-sm text-muted-foreground">Posted by</p>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{property.owner.name}</p>
-                          {property.owner.verified && (
+                          <p className="font-medium">{property.profiles?.name || "Owner"}</p>
+                          {property.profiles?.verified && (
                             <div className="flex items-center gap-1 text-xs text-primary">
                               <Shield className="h-3 w-3" />
                               Verified
@@ -222,10 +242,10 @@ export default function PropertyDetails() {
                       </div>
                     </div>
 
-                    {showPhone ? (
+                    {showPhone && property.profiles?.phone ? (
                       <div className="bg-accent rounded-lg p-3 text-center">
                         <p className="text-sm text-muted-foreground">Phone Number</p>
-                        <p className="font-semibold text-lg">{property.owner.phone}</p>
+                        <p className="font-semibold text-lg">{property.profiles.phone}</p>
                       </div>
                     ) : (
                       <Button
