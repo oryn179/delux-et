@@ -43,6 +43,53 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          property_id: string
+          read_at: string | null
+          recipient_id: string
+          sender_email: string
+          sender_id: string
+          sender_name: string
+          sender_phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          property_id: string
+          read_at?: string | null
+          recipient_id: string
+          sender_email: string
+          sender_id: string
+          sender_name: string
+          sender_phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          property_id?: string
+          read_at?: string | null
+          recipient_id?: string
+          sender_email?: string
+          sender_id?: string
+          sender_name?: string
+          sender_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
