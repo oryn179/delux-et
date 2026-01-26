@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, User, Heart, LogOut } from "lucide-react";
+import { Menu, X, User, Heart, LogOut, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +16,7 @@ import deluxLogo from "@/assets/delux-logo.png";
 
 const navLinks = [
   { name: "Home", href: "/" },
-  { name: "Popular Listings", href: "/#listings" },
+  { name: "Search", href: "/search" },
   { name: "About", href: "/about" },
   { name: "Contact", href: "/#contact" },
 ];
