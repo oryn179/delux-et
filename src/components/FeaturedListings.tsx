@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { PropertyCard } from "@/components/PropertyCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
@@ -23,9 +24,11 @@ export function FeaturedListings() {
               All verified and ready for immediate connection.
             </p>
           </div>
-          <Button variant="outline" className="gap-2 self-start md:self-auto">
-            View All Listings
-            <ArrowRight className="h-4 w-4" />
+          <Button variant="outline" className="gap-2 self-start md:self-auto" asChild>
+            <Link to="/search">
+              View All Listings
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </Button>
         </div>
 

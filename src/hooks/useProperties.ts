@@ -5,11 +5,8 @@ import type { Database } from "@/integrations/supabase/types";
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type PropertyInsert = Database["public"]["Tables"]["properties"]["Insert"];
 type PropertyImage = Database["public"]["Tables"]["property_images"]["Row"];
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-
 export interface PropertyWithImages extends Property {
   property_images: PropertyImage[];
-  profiles: Pick<Profile, "name" | "phone" | "verified"> | null;
 }
 
 export interface SearchFilters {
@@ -17,6 +14,10 @@ export interface SearchFilters {
   listingType?: string;
   area?: string;
   bedrooms?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  furnished?: boolean;
+  features?: string[];
 }
 
 export function useProperties(filters?: SearchFilters) {
@@ -27,8 +28,7 @@ export function useProperties(filters?: SearchFilters) {
         .from("properties")
         .select(`
           *,
-          property_images(*),
-          profiles(name, phone, verified)
+          property_images(*)
         `)
         .eq("is_available", true)
         .order("created_at", { ascending: false });
@@ -65,6 +65,18 @@ export function useProperties(filters?: SearchFilters) {
         query = query.eq("bedrooms", filters.bedrooms);
       }
 
+      if (filters?.furnished !== undefined) {
+        query = query.eq("furnished", filters.furnished);
+      }
+
+      if (filters?.minPrice) {
+        query = query.gte("price", filters.minPrice.toString());
+      }
+
+      if (filters?.maxPrice) {
+        query = query.lte("price", filters.maxPrice.toString());
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       return data as unknown as PropertyWithImages[];
@@ -80,8 +92,7 @@ export function useProperty(id: string) {
         .from("properties")
         .select(`
           *,
-          property_images(*),
-          profiles(name, phone, verified)
+          property_images(*)
         `)
         .eq("id", id)
         .maybeSingle();
@@ -90,6 +101,24 @@ export function useProperty(id: string) {
       return data as unknown as PropertyWithImages | null;
     },
     enabled: !!id,
+  });
+}
+
+export function useOwnerProfile(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["owner-profile", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
   });
 }
 

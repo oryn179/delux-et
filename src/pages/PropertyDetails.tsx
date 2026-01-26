@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
-import { useProperty } from "@/hooks/useProperties";
+import { useProperty, useOwnerProfile } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
+import { ContactOwnerDialog } from "@/components/ContactOwnerDialog";
 
 export default function PropertyDetails() {
   const { id } = useParams();
@@ -18,9 +19,11 @@ export default function PropertyDetails() {
   const { toast } = useToast();
 
   const { data: property, isLoading } = useProperty(id || "");
+  const { data: ownerProfile } = useOwnerProfile(property?.user_id);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showPhone, setShowPhone] = useState(false);
+  const [showContactDialog, setShowContactDialog] = useState(false);
 
   if (isLoading) {
     return (
@@ -231,8 +234,8 @@ export default function PropertyDetails() {
                       <div>
                         <p className="text-sm text-muted-foreground">Posted by</p>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{property.profiles?.name || "Owner"}</p>
-                          {property.profiles?.verified && (
+                          <p className="font-medium">{ownerProfile?.name || "Owner"}</p>
+                          {ownerProfile?.verified && (
                             <div className="flex items-center gap-1 text-xs text-primary">
                               <Shield className="h-3 w-3" />
                               Verified
@@ -242,20 +245,39 @@ export default function PropertyDetails() {
                       </div>
                     </div>
 
-                    {showPhone && property.profiles?.phone ? (
-                      <div className="bg-accent rounded-lg p-3 text-center">
+                    {showPhone && ownerProfile?.phone ? (
+                      <div className="bg-accent rounded-lg p-3 text-center mb-3">
                         <p className="text-sm text-muted-foreground">Phone Number</p>
-                        <p className="font-semibold text-lg">{property.profiles.phone}</p>
+                        <p className="font-semibold text-lg">{ownerProfile.phone}</p>
                       </div>
                     ) : (
                       <Button
                         onClick={handleViewPhone}
-                        className="w-full gradient-primary border-0 gap-2"
+                        className="w-full gradient-primary border-0 gap-2 mb-3"
                       >
                         <Phone className="h-4 w-4" />
                         View Phone Number
                       </Button>
                     )}
+
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          toast({
+                            title: "Login Required",
+                            description: "Please sign in to contact the owner.",
+                          });
+                          navigate("/signin", { state: { from: { pathname: `/property/${id}` } } });
+                          return;
+                        }
+                        setShowContactDialog(true);
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Contact Owner
+                    </Button>
                   </div>
 
                   {/* Action Buttons */}
@@ -291,6 +313,16 @@ export default function PropertyDetails() {
         </div>
       </main>
       <Footer />
+
+      <ContactOwnerDialog
+        open={showContactDialog}
+        onOpenChange={setShowContactDialog}
+        propertyId={property.id}
+        propertyTitle={property.title}
+        ownerId={property.user_id}
+        ownerName={ownerProfile?.name || "Owner"}
+        ownerEmail={ownerProfile?.user_id || ""}
+      />
     </div>
   );
 }

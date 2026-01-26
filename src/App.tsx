@@ -15,6 +15,7 @@ import Favorites from "./pages/Favorites";
 import Profile from "./pages/Profile";
 import ListProperty from "./pages/ListProperty";
 import About from "./pages/About";
+import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/list-property" element={<ListProperty />} />
                 <Route path="/about" element={<About />} />
+                <Route path="/search" element={<Search />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
