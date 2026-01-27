@@ -16,6 +16,9 @@ import Profile from "./pages/Profile";
 import ListProperty from "./pages/ListProperty";
 import About from "./pages/About";
 import Search from "./pages/Search";
+import Inbox from "./pages/Inbox";
+import VerifyAccount from "./pages/VerifyAccount";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +42,9 @@ const App = () => (
                 <Route path="/list-property" element={<ListProperty />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/search" element={<Search />} />
+                <Route path="/inbox" element={<Inbox />} />
+                <Route path="/verify" element={<VerifyAccount />} />
+                <Route path="/admin" element={<Admin />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
