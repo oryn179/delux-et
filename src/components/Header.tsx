@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, User, Heart, LogOut, Search } from "lucide-react";
+import { Menu, X, User, Heart, LogOut, Search, Mail, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
+import { useUnreadCount } from "@/hooks/useMessages";
+import { useIsAdmin } from "@/hooks/useAdmin";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +27,8 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, signOut } = useAuth();
   const { data: profile } = useProfile(user?.id);
+  const { data: unreadCount } = useUnreadCount(user?.id);
+  const { data: isAdmin } = useIsAdmin(user?.id);
   const navigate = useNavigate();
 
   const displayName = profile?.name || user?.email?.split("@")[0] || "User";
@@ -85,10 +89,28 @@ export function Header() {
                     <User className="h-4 w-4 mr-2" />
                     My Profile
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/inbox")}>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Messages
+                    {unreadCount && unreadCount > 0 && (
+                      <span className="ml-auto bg-primary text-primary-foreground text-xs rounded-full px-2">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/favorites")}>
                     <Heart className="h-4 w-4 mr-2" />
                     Favorites
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/admin")}>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Admin Panel
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                     <LogOut className="h-4 w-4 mr-2" />

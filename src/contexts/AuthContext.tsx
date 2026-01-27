@@ -24,10 +24,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+
+        // Track login
+        if (event === "SIGNED_IN" && session?.user) {
+          // Use setTimeout to avoid blocking the auth callback
+          setTimeout(async () => {
+            try {
+              await supabase.from("login_history").insert({
+                user_id: session.user.id,
+                email: session.user.email || "",
+                user_agent: navigator.userAgent,
+              });
+            } catch (error) {
+              console.error("Failed to track login:", error);
+            }
+          }, 0);
+        }
       }
     );
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { PropertyCard } from "@/components/PropertyCard";
+import { PropertyMap } from "@/components/PropertyMap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useProperties, SearchFilters } from "@/hooks/useProperties";
-import { Search as SearchIcon, SlidersHorizontal, X, Loader2 } from "lucide-react";
+import { Search as SearchIcon, SlidersHorizontal, X, Loader2, Map, Grid } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -24,6 +25,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const propertyTypes = [
   { value: "apartment", label: "Apartment" },
@@ -69,6 +71,7 @@ export default function Search() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   const { data: properties, isLoading } = useProperties(filters);
 
@@ -297,31 +300,46 @@ export default function Search() {
               </p>
             </div>
 
-            {/* Mobile Filters Toggle */}
-            <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" className="md:hidden gap-2">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Filters
-                  {hasActiveFilters && (
-                    <span className="bg-primary text-primary-foreground text-xs rounded-full px-2">
-                      Active
-                    </span>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-full sm:max-w-md overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Filters</SheetTitle>
-                  <SheetDescription>
-                    Narrow down your property search
-                  </SheetDescription>
-                </SheetHeader>
-                <div className="mt-6">
-                  <FilterContent />
-                </div>
-              </SheetContent>
-            </Sheet>
+            {/* View Toggle and Mobile Filters */}
+            <div className="flex items-center gap-2">
+              {/* View Mode Toggle */}
+              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "grid" | "map")} className="hidden md:block">
+                <TabsList>
+                  <TabsTrigger value="grid" className="gap-2">
+                    <Grid className="h-4 w-4" />
+                    Grid
+                  </TabsTrigger>
+                  <TabsTrigger value="map" className="gap-2">
+                    <Map className="h-4 w-4" />
+                    Map
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="md:hidden gap-2">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Filters
+                    {hasActiveFilters && (
+                      <span className="bg-primary text-primary-foreground text-xs rounded-full px-2">
+                        Active
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Filters</SheetTitle>
+                    <SheetDescription>
+                      Narrow down your property search
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <FilterContent />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-4 gap-8">
@@ -336,35 +354,41 @@ export default function Search() {
               </div>
             </div>
 
-            {/* Results Grid */}
+            {/* Results */}
             <div className="lg:col-span-3">
               {isLoading ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : properties && properties.length > 0 ? (
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {properties.map((property) => {
-                    const primaryImage =
-                      property.property_images?.find((img) => img.is_primary)
-                        ?.image_url ||
-                      property.property_images?.[0]?.image_url ||
-                      "/placeholder.svg";
-                    return (
-                      <PropertyCard
-                        key={property.id}
-                        id={property.id}
-                        image={primaryImage}
-                        title={property.title}
-                        location={`${property.city}, ${property.area}`}
-                        bedrooms={property.bedrooms}
-                        bathrooms={property.bathrooms}
-                        type={property.listing_type}
-                        isFree={property.is_available ?? false}
-                      />
-                    );
-                  })}
-                </div>
+                <>
+                  {viewMode === "map" ? (
+                    <PropertyMap properties={properties} className="h-[600px]" />
+                  ) : (
+                    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {properties.map((property) => {
+                        const primaryImage =
+                          property.property_images?.find((img) => img.is_primary)
+                            ?.image_url ||
+                          property.property_images?.[0]?.image_url ||
+                          "/placeholder.svg";
+                        return (
+                          <PropertyCard
+                            key={property.id}
+                            id={property.id}
+                            image={primaryImage}
+                            title={property.title}
+                            location={`${property.city}, ${property.area}`}
+                            bedrooms={property.bedrooms}
+                            bathrooms={property.bathrooms}
+                            type={property.listing_type}
+                            isFree={property.is_available ?? false}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-20">
                   <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { useCreateProperty, useUploadPropertyImage, useAddPropertyImage } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
@@ -32,6 +33,7 @@ const areas = ["Bole", "Piassa Arada", "Kazanchis", "CMC", "Megenagna", "Sidist 
 export default function ListProperty() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,6 +55,10 @@ export default function ListProperty() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Check if user signed up with Google/GitHub (considered verified)
+  const isOAuthUser = user?.app_metadata?.provider === "google" || user?.app_metadata?.provider === "github";
+  const isVerified = profile?.verified || isOAuthUser;
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -67,6 +73,33 @@ export default function ListProperty() {
             <div className="flex gap-3 justify-center">
               <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
               <Button onClick={() => navigate("/signin")} className="gradient-primary border-0">Sign In</Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Show verification required screen if user is not verified
+  if (!profileLoading && !isVerified) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center gradient-hero">
+          <div className="text-center p-8 max-w-md">
+            <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 mx-auto mb-4 flex items-center justify-center">
+              <ShieldAlert className="h-8 w-8 text-amber-600" />
+            </div>
+            <h1 className="text-2xl font-display font-bold mb-2">Verification Required</h1>
+            <p className="text-muted-foreground mb-6">
+              To protect our community, you need to verify your account before posting property listings.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
+              <Button onClick={() => navigate("/verify")} className="gradient-primary border-0">
+                Verify Account
+              </Button>
             </div>
           </div>
         </main>

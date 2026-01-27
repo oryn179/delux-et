@@ -43,6 +43,33 @@ export type Database = {
           },
         ]
       }
+      login_history: {
+        Row: {
+          email: string
+          id: string
+          ip_address: string | null
+          logged_in_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          email: string
+          id?: string
+          ip_address?: string | null
+          logged_in_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          ip_address?: string | null
+          logged_in_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           created_at: string
@@ -94,31 +121,40 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          email_verified: boolean | null
           id: string
           name: string
           phone: string | null
+          phone_verified: boolean | null
           updated_at: string
           user_id: string
+          verification_method: string | null
           verified: boolean | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          email_verified?: boolean | null
           id?: string
           name: string
           phone?: string | null
+          phone_verified?: boolean | null
           updated_at?: string
           user_id: string
+          verification_method?: string | null
           verified?: boolean | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          email_verified?: boolean | null
           id?: string
           name?: string
           phone?: string | null
+          phone_verified?: boolean | null
           updated_at?: string
           user_id?: string
+          verification_method?: string | null
           verified?: boolean | null
         }
         Relationships: []
@@ -135,7 +171,9 @@ export type Database = {
           furnished: boolean | null
           id: string
           is_available: boolean | null
+          latitude: number | null
           listing_type: Database["public"]["Enums"]["listing_type"]
+          longitude: number | null
           price: string | null
           property_type: Database["public"]["Enums"]["property_type"]
           title: string
@@ -153,7 +191,9 @@ export type Database = {
           furnished?: boolean | null
           id?: string
           is_available?: boolean | null
+          latitude?: number | null
           listing_type: Database["public"]["Enums"]["listing_type"]
+          longitude?: number | null
           price?: string | null
           property_type: Database["public"]["Enums"]["property_type"]
           title: string
@@ -171,7 +211,9 @@ export type Database = {
           furnished?: boolean | null
           id?: string
           is_available?: boolean | null
+          latitude?: number | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
+          longitude?: number | null
           price?: string | null
           property_type?: Database["public"]["Enums"]["property_type"]
           title?: string
@@ -212,14 +254,42 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       listing_type: "rent" | "sell"
       property_type: "apartment" | "house" | "villa" | "real-estate"
     }
@@ -349,6 +419,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       listing_type: ["rent", "sell"],
       property_type: ["apartment", "house", "villa", "real-estate"],
     },
