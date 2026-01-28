@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { CompareProvider } from "@/contexts/CompareContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { CompareBar } from "@/components/CompareBar";
 
 import Index from "./pages/Index";
@@ -22,6 +23,7 @@ import Inbox from "./pages/Inbox";
 import VerifyAccount from "./pages/VerifyAccount";
 import Admin from "./pages/Admin";
 import Compare from "./pages/Compare";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,36 +31,39 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="delux-ui-theme">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <FavoritesProvider>
-              <CompareProvider>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/signin" element={<SignIn />} />
-                  <Route path="/signup" element={<SignUp />} />
-                  <Route path="/property/:id" element={<PropertyDetails />} />
-                  <Route path="/favorites" element={<Favorites />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/list-property" element={<ListProperty />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/search" element={<Search />} />
-                  <Route path="/inbox" element={<Inbox />} />
-                  <Route path="/verify" element={<VerifyAccount />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/compare" element={<Compare />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <CompareBar />
-              </CompareProvider>
-            </FavoritesProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <FavoritesProvider>
+                <CompareProvider>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/signin" element={<SignIn />} />
+                    <Route path="/signup" element={<SignUp />} />
+                    <Route path="/property/:id" element={<PropertyDetails />} />
+                    <Route path="/favorites" element={<Favorites />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/list-property" element={<ListProperty />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/search" element={<Search />} />
+                    <Route path="/inbox" element={<Inbox />} />
+                    <Route path="/verify" element={<VerifyAccount />} />
+                    <Route path="/admin" element={<Admin />} />
+                    <Route path="/compare" element={<Compare />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <CompareBar />
+                </CompareProvider>
+              </FavoritesProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </LanguageProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
