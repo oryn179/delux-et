@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale } from "lucide-react";
+import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCompare } from "@/contexts/CompareContext";
 import { useProperty, useOwnerProfile } from "@/hooks/useProperties";
+import { useRecordPropertyView, usePropertyViewCount } from "@/hooks/usePropertyViews";
 import { useToast } from "@/hooks/use-toast";
 import { ContactOwnerDialog } from "@/components/ContactOwnerDialog";
 import { ReviewSection } from "@/components/ReviewSection";
@@ -17,12 +18,16 @@ import { CompareButton } from "@/components/CompareButton";
 export default function PropertyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
 
   const { data: property, isLoading } = useProperty(id || "");
   const { data: ownerProfile } = useOwnerProfile(property?.user_id);
+  const { data: viewCount } = usePropertyViewCount(id || "");
+  
+  // Record property view
+  useRecordPropertyView(id || "", user?.id);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showPhone, setShowPhone] = useState(false);
@@ -237,8 +242,19 @@ export default function PropertyDetails() {
                   </div>
 
                   {property.price && (
-                    <div className="text-2xl font-bold text-primary">{property.price}</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {property.price} ETB
+                      {property.listing_type === "rent" && (
+                        <span className="text-sm font-normal text-muted-foreground">/month</span>
+                      )}
+                    </div>
                   )}
+
+                  {/* View Count */}
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Eye className="h-4 w-4" />
+                    <span>{viewCount || 0} views</span>
+                  </div>
 
                   {/* Owner Info */}
                   <div className="pt-4 border-t border-border">

@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUserProperties } from "@/hooks/useProperties";
 import { useUserMessages, useUnreadCount } from "@/hooks/useMessages";
+import { useTotalUserViews, useUserPropertyViews } from "@/hooks/usePropertyViews";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, MessageSquare, Home, TrendingUp, Clock, ArrowUpRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
@@ -19,6 +20,8 @@ export default function Dashboard() {
   const { data: properties, isLoading: propertiesLoading } = useUserProperties(user?.id);
   const { data: messages } = useUserMessages(user?.id);
   const { data: unreadCount } = useUnreadCount(user?.id);
+  const { data: totalViews } = useTotalUserViews(user?.id);
+  const { data: propertyViews } = useUserPropertyViews(user?.id);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -45,9 +48,6 @@ export default function Dashboard() {
     ? Math.round((respondedMessages / receivedMessages.length) * 100) 
     : 100;
 
-  // Generate mock views data (in real app, you'd track this in DB)
-  const totalViews = userProperties.length * Math.floor(Math.random() * 50 + 20);
-
   // Inquiries trend data (last 7 days)
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = subDays(new Date(), 6 - i);
@@ -61,12 +61,15 @@ export default function Dashboard() {
     };
   });
 
-  // Property performance data
-  const propertyPerformance = userProperties.slice(0, 5).map(p => ({
-    name: p.title.substring(0, 15) + (p.title.length > 15 ? '...' : ''),
-    views: Math.floor(Math.random() * 100 + 10),
-    inquiries: receivedMessages.filter(m => m.property_id === p.id).length || Math.floor(Math.random() * 10),
-  }));
+  // Property performance data - using real view data
+  const propertyPerformance = userProperties.slice(0, 5).map(p => {
+    const propViews = propertyViews?.filter(v => v.property_id === p.id) || [];
+    return {
+      name: p.title.substring(0, 15) + (p.title.length > 15 ? '...' : ''),
+      views: propViews.length,
+      inquiries: receivedMessages.filter(m => m.property_id === p.id).length,
+    };
+  });
 
   // Listing type distribution
   const listingDistribution = [
@@ -86,8 +89,8 @@ export default function Dashboard() {
   const stats = [
     { 
       title: t("dashboard.totalViews"), 
-      value: totalViews.toLocaleString(), 
-      icon: Eye, 
+      value: (totalViews || 0).toLocaleString(), 
+      icon: Eye,
       trend: "+12%",
       color: "text-blue-500" 
     },

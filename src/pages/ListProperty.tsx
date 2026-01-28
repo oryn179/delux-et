@@ -51,6 +51,7 @@ export default function ListProperty() {
   const [furnished, setFurnished] = useState<boolean | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,6 +163,7 @@ export default function ListProperty() {
         listing_type: listingType,
         property_type: propertyType,
         furnished,
+        price: price || null,
       });
 
       // Upload images
@@ -393,6 +395,19 @@ export default function ListProperty() {
                     placeholder="Describe your property..."
                     rows={4}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Price (ETB) - Optional</Label>
+                  <Input
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="e.g., 15000"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty if you want to discuss the price with interested parties
+                  </p>
                 </div>
               </div>
             )}

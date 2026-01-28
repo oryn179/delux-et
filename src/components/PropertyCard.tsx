@@ -15,6 +15,7 @@ interface PropertyCardProps {
   bedrooms: number;
   bathrooms: number;
   type: "rent" | "sell";
+  price?: string | null;
   isFree?: boolean;
 }
 
@@ -26,6 +27,7 @@ export function PropertyCard({
   bedrooms,
   bathrooms,
   type,
+  price,
   isFree = true,
 }: PropertyCardProps) {
   const navigate = useNavigate();
@@ -144,6 +146,12 @@ export function PropertyCard({
             <span>{bathrooms} Bathrooms</span>
           </div>
         </div>
+
+        {price && (
+          <div className="text-lg font-bold text-primary">
+            {price} ETB{type === "rent" ? <span className="text-sm font-normal text-muted-foreground">/month</span> : ""}
+          </div>
+        )}
 
         <div className="flex gap-2 pt-2">
           <Button variant="outline" size="sm" className="flex-1" onClick={handleViewDetails}>
