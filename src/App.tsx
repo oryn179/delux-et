@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
+import { CompareProvider } from "@/contexts/CompareContext";
+import { CompareBar } from "@/components/CompareBar";
 
 import Index from "./pages/Index";
 import SignIn from "./pages/SignIn";
@@ -19,6 +21,7 @@ import Search from "./pages/Search";
 import Inbox from "./pages/Inbox";
 import VerifyAccount from "./pages/VerifyAccount";
 import Admin from "./pages/Admin";
+import Compare from "./pages/Compare";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,22 +35,26 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <FavoritesProvider>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/signin" element={<SignIn />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/property/:id" element={<PropertyDetails />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/list-property" element={<ListProperty />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/inbox" element={<Inbox />} />
-                <Route path="/verify" element={<VerifyAccount />} />
-                <Route path="/admin" element={<Admin />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <CompareProvider>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/signin" element={<SignIn />} />
+                  <Route path="/signup" element={<SignUp />} />
+                  <Route path="/property/:id" element={<PropertyDetails />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/list-property" element={<ListProperty />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/search" element={<Search />} />
+                  <Route path="/inbox" element={<Inbox />} />
+                  <Route path="/verify" element={<VerifyAccount />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/compare" element={<Compare />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <CompareBar />
+              </CompareProvider>
             </FavoritesProvider>
           </AuthProvider>
         </BrowserRouter>

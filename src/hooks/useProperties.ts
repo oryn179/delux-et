@@ -84,6 +84,27 @@ export function useProperties(filters?: SearchFilters) {
   });
 }
 
+export function usePropertiesByIds(ids: string[]) {
+  return useQuery({
+    queryKey: ["properties-by-ids", ids],
+    queryFn: async () => {
+      if (!ids || ids.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .from("properties")
+        .select(`
+          *,
+          property_images(*)
+        `)
+        .in("id", ids);
+
+      if (error) throw error;
+      return data as unknown as PropertyWithImages[];
+    },
+    enabled: ids.length > 0,
+  });
+}
+
 export function useProperty(id: string) {
   return useQuery({
     queryKey: ["property", id],
