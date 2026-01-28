@@ -382,6 +382,7 @@ export default function Search() {
                             bedrooms={property.bedrooms}
                             bathrooms={property.bathrooms}
                             type={property.listing_type}
+                            price={property.price}
                             isFree={property.is_available ?? false}
                           />
                         );
