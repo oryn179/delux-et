@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { Heart, Bed, Bath, MapPin } from "lucide-react";
+import { Heart, Bed, Bath, MapPin, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFavorites } from "@/contexts/FavoritesContext";
+import { useCompare } from "@/contexts/CompareContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,6 +31,7 @@ export function PropertyCard({
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { addToCompare, removeFromCompare, isInCompare, canAddMore } = useCompare();
   const { toast } = useToast();
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -43,6 +45,23 @@ export function PropertyCard({
       return;
     }
     toggleFavorite(id);
+  };
+
+  const handleCompareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isInCompare(id)) {
+      removeFromCompare(id);
+      toast({ title: "Removed from compare" });
+    } else if (canAddMore) {
+      addToCompare(id);
+      toast({ title: "Added to compare", description: "Compare up to 4 properties" });
+    } else {
+      toast({
+        title: "Limit reached",
+        description: "You can only compare up to 4 properties",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleViewDetails = () => {
@@ -81,14 +100,24 @@ export function PropertyCard({
             {type === "rent" ? "For Rent" : "For Sale"}
           </Badge>
         </div>
-        <Button
-          variant="secondary"
-          size="icon"
-          className="absolute top-3 right-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={handleFavoriteClick}
-        >
-          <Heart className={`h-4 w-4 ${isFavorite(id) ? "fill-primary text-primary" : ""}`} />
-        </Button>
+        <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="rounded-full h-9 w-9"
+            onClick={handleFavoriteClick}
+          >
+            <Heart className={`h-4 w-4 ${isFavorite(id) ? "fill-primary text-primary" : ""}`} />
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            className={`rounded-full h-9 w-9 ${isInCompare(id) ? "bg-primary text-primary-foreground" : ""}`}
+            onClick={handleCompareClick}
+          >
+            <Scale className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Content */}

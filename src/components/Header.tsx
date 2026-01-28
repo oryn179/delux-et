@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, User, Heart, LogOut, Search, Mail, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useUnreadCount } from "@/hooks/useMessages";
@@ -66,6 +67,8 @@ export function Header() {
           
           {isAuthenticated ? (
             <>
+              <NotificationDropdown />
+              
               <Button
                 variant="ghost"
                 size="icon"

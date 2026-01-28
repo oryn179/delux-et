@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle } from "lucide-react";
+import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
+import { useCompare } from "@/contexts/CompareContext";
 import { useProperty, useOwnerProfile } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
 import { ContactOwnerDialog } from "@/components/ContactOwnerDialog";
+import { ReviewSection } from "@/components/ReviewSection";
+import { CompareButton } from "@/components/CompareButton";
 
 export default function PropertyDetails() {
   const { id } = useParams();
@@ -190,6 +193,15 @@ export default function PropertyDetails() {
                   </div>
                 </div>
               )}
+
+              {/* Reviews Section */}
+              <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
+                <ReviewSection
+                  ownerId={property.user_id}
+                  ownerName={ownerProfile?.name || "Owner"}
+                  propertyId={property.id}
+                />
+              </div>
             </div>
 
             {/* Right Column - Info & Actions */}
@@ -292,6 +304,7 @@ export default function PropertyDetails() {
                       />
                       {isFavorite(property.id) ? "Saved" : "Save"}
                     </Button>
+                    <CompareButton propertyId={property.id} />
                     <Button variant="outline" size="icon">
                       <Share2 className="h-4 w-4" />
                     </Button>
