@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Heart, Bed, Bath, MapPin, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PriceTag } from "@/components/PriceTag";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCompare } from "@/contexts/CompareContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -148,9 +149,7 @@ export function PropertyCard({
         </div>
 
         {price && (
-          <div className="text-lg font-bold text-primary">
-            {price} ETB{type === "rent" ? <span className="text-sm font-normal text-muted-foreground">/month</span> : ""}
-          </div>
+          <PriceTag price={price} type={type} />
         )}
 
         <div className="flex gap-2 pt-2">
