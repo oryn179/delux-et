@@ -48,8 +48,8 @@ export default function VerifyAccount() {
     );
   }
 
-  // Check if user signed up with Google/GitHub (already verified)
-  const isOAuthUser = user.app_metadata?.provider === "google" || user.app_metadata?.provider === "github";
+  // Check if user signed up with Google/Apple (already verified)
+  const isOAuthUser = user.app_metadata?.provider === "google" || user.app_metadata?.provider === "apple";
   const isVerified = profile?.verified || isOAuthUser;
 
   if (isVerified) {
@@ -86,12 +86,11 @@ export default function VerifyAccount() {
   const handleSendEmailVerification = async () => {
     setIsLoading(true);
     try {
-      // Generate a 6-digit code
+      // Generate a 6-digit code for email (demo mode)
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedCode(code);
 
-      // In production, send via edge function. For now, we'll simulate
-      // by storing the code and showing it in a toast (demo purposes)
+      // In production, send via edge function with email service
       toast({
         title: "Verification code sent!",
         description: `Demo mode: Your code is ${code}. In production, this would be sent to your email.`,
@@ -112,32 +111,64 @@ export default function VerifyAccount() {
 
     setIsLoading(true);
     try {
-      // Generate a 6-digit code
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedCode(code);
-
-      // In production, send SMS via edge function
-      toast({
-        title: "Verification code sent!",
-        description: `Demo mode: Your code is ${code}. In production, this would be sent to your phone.`,
+      // Call Twilio edge function to send verification
+      const { data, error } = await supabase.functions.invoke('twilio-verify', {
+        body: { action: 'send', phone: phoneNumber }
       });
-      
-      setStep("verify");
-      setIsLoading(false);
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Verification code sent!",
+          description: `A code has been sent to +251 ${phoneNumber}`,
+        });
+        setStep("verify");
+      } else {
+        throw new Error(data?.error || 'Failed to send verification code');
+      }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to send verification SMS.", variant: "destructive" });
+      console.error('Phone verification error:', error);
+      toast({ 
+        title: "Error", 
+        description: error instanceof Error ? error.message : "Failed to send verification SMS.", 
+        variant: "destructive" 
+      });
+    } finally {
       setIsLoading(false);
     }
   };
 
   const handleVerifyCode = async () => {
-    if (verificationCode !== generatedCode) {
-      toast({ title: "Invalid code", description: "The verification code is incorrect.", variant: "destructive" });
+    if (verificationCode.length !== 6) {
+      toast({ title: "Invalid code", description: "Please enter a 6-digit code.", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
     try {
+      if (method === "phone") {
+        // Verify with Twilio
+        const { data, error } = await supabase.functions.invoke('twilio-verify', {
+          body: { action: 'verify', phone: phoneNumber, code: verificationCode }
+        });
+
+        if (error) throw error;
+
+        if (!data?.success) {
+          toast({ title: "Invalid code", description: "The verification code is incorrect.", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        // Email verification (demo mode - check local code)
+        if (verificationCode !== generatedCode) {
+          toast({ title: "Invalid code", description: "The verification code is incorrect.", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // Update profile as verified
       await updateProfile.mutateAsync({
         userId: user.id,
@@ -153,6 +184,7 @@ export default function VerifyAccount() {
       setStep("success");
       toast({ title: "Verified!", description: "Your account has been verified successfully." });
     } catch (error) {
+      console.error('Verification error:', error);
       toast({ title: "Error", description: "Failed to verify account.", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -203,7 +235,7 @@ export default function VerifyAccount() {
                       <Phone className="h-6 w-6 text-primary" />
                     </div>
                     <div className="text-left">
-                      <p className="font-medium">Phone Verification</p>
+                      <p className="font-medium">Phone Verification (Twilio)</p>
                       <p className="text-sm text-muted-foreground">
                         We'll send an SMS to your phone
                       </p>
@@ -218,7 +250,7 @@ export default function VerifyAccount() {
                 <div className="text-center">
                   <h1 className="text-2xl font-display font-bold mb-2">Enter Phone Number</h1>
                   <p className="text-muted-foreground">
-                    We'll send a verification code to this number
+                    We'll send a verification code via SMS
                   </p>
                 </div>
 
