@@ -26,7 +26,10 @@ import Compare from "./pages/Compare";
 import Dashboard from "./pages/Dashboard";
 import Support from "./pages/Support";
 import Contact from "./pages/Contact";
+import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
+import { BuyMeCoffeeWidget } from "@/components/BuyMeCoffeeWidget";
+import { ComingSoonWidget } from "@/components/ComingSoonWidget";
 
 const queryClient = new QueryClient();
 
@@ -58,10 +61,13 @@ const App = () => (
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/support" element={<Support />} />
                     <Route path="/contact" element={<Contact />} />
+                    <Route path="/faq" element={<FAQ />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                   <CompareBar />
+                  <BuyMeCoffeeWidget />
+                  <ComingSoonWidget />
                 </CompareProvider>
               </FavoritesProvider>
             </AuthProvider>
