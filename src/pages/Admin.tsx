@@ -26,6 +26,8 @@ import {
   AlertTriangle,
   LogOut,
   RefreshCw,
+  Send,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +92,13 @@ export default function Admin() {
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
   const [banReason, setBanReason] = useState("");
+  
+  // Admin messaging state
+  const [selectedUserForMessage, setSelectedUserForMessage] = useState<any>(null);
+  const [messageSubject, setMessageSubject] = useState("");
+  const [messageContent, setMessageContent] = useState("");
+  const [sendEmailToo, setSendEmailToo] = useState(true);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   useEffect(() => {
     checkAdminStatus();
@@ -375,6 +384,56 @@ export default function Admin() {
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!selectedUserForMessage || !messageSubject || !messageContent) return;
+
+    setIsSendingMessage(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-admin-message`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            recipientId: selectedUserForMessage.user_id,
+            subject: messageSubject,
+            message: messageContent,
+            sendEmail: sendEmailToo,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to send message");
+      }
+
+      toast({
+        title: "Message sent",
+        description: `Message sent to ${selectedUserForMessage.name}${result.emailSent ? " (email also sent)" : ""}.`,
+      });
+
+      setSelectedUserForMessage(null);
+      setMessageSubject("");
+      setMessageContent("");
+      fetchAllData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send message.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -474,6 +533,10 @@ export default function Admin() {
               <TabsTrigger value="admins" className="gap-2">
                 <Crown className="h-4 w-4" />
                 Admins
+              </TabsTrigger>
+              <TabsTrigger value="messaging" className="gap-2">
+                <Send className="h-4 w-4" />
+                Messaging
               </TabsTrigger>
             </TabsList>
 
@@ -930,6 +993,114 @@ export default function Admin() {
                 <p className="text-muted-foreground text-sm mt-4">
                   Current admin: {user.email}
                 </p>
+              </div>
+            </TabsContent>
+
+            {/* Messaging Tab */}
+            <TabsContent value="messaging">
+              <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Send className="h-5 w-5" />
+                  Send Message to Users
+                </h2>
+                <p className="text-muted-foreground text-sm mb-6">
+                  Send notifications and emails to users. Messages will appear in their notifications and optionally via email.
+                </p>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* User Selection */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium">Select User</Label>
+                    <div className="max-h-[400px] overflow-y-auto border rounded-lg">
+                      {profiles.map((profile) => (
+                        <div
+                          key={profile.id}
+                          className={`p-3 border-b cursor-pointer transition-colors hover:bg-secondary/50 ${
+                            selectedUserForMessage?.id === profile.id ? "bg-primary/10 border-primary" : ""
+                          }`}
+                          onClick={() => setSelectedUserForMessage(profile)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium flex items-center gap-2">
+                                {profile.name}
+                                {profile.verified && <BadgeCheck className="h-4 w-4 text-primary" />}
+                              </p>
+                              <p className="text-sm text-muted-foreground">{profile.phone || "No phone"}</p>
+                            </div>
+                            {selectedUserForMessage?.id === profile.id && (
+                              <CheckCircle className="h-5 w-5 text-primary" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Message Form */}
+                  <div className="space-y-4">
+                    {selectedUserForMessage ? (
+                      <>
+                        <div className="p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-sm text-muted-foreground">Sending message to:</p>
+                          <p className="font-semibold">{selectedUserForMessage.name}</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Subject</Label>
+                          <Input
+                            value={messageSubject}
+                            onChange={(e) => setMessageSubject(e.target.value)}
+                            placeholder="e.g., Important Update"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Message</Label>
+                          <Textarea
+                            value={messageContent}
+                            onChange={(e) => setMessageContent(e.target.value)}
+                            placeholder="Write your message here..."
+                            rows={5}
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={sendEmailToo}
+                            onCheckedChange={setSendEmailToo}
+                          />
+                          <Label className="cursor-pointer">Also send via email</Label>
+                        </div>
+
+                        <Button
+                          onClick={handleSendMessage}
+                          disabled={isSendingMessage || !messageSubject || !messageContent}
+                          className="w-full gradient-primary border-0 gap-2"
+                        >
+                          {isSendingMessage ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4" />
+                              Send Message
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <div className="text-center">
+                          <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>Select a user to send a message</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </TabsContent>
           </Tabs>

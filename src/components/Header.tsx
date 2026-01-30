@@ -43,6 +43,7 @@ export function Header() {
     { name: t("nav.about"), href: "/about" },
     { name: t("nav.contact"), href: "/contact" },
     { name: t("nav.support"), href: "/support" },
+    { name: t("nav.faq"), href: "/faq" },
   ];
 
   return (
