@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_id: string | null
+          target_type: string
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type: string
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type?: string
+        }
+        Relationships: []
+      }
+      donations: {
+        Row: {
+          amount: number | null
+          created_at: string
+          currency: string | null
+          donor_email: string | null
+          donor_name: string | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          status: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          donor_email?: string | null
+          donor_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          donor_email?: string | null
+          donor_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -153,6 +225,9 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          banned: boolean | null
+          banned_at: string | null
+          banned_reason: string | null
           created_at: string
           email_verified: boolean | null
           id: string
@@ -166,6 +241,9 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          banned?: boolean | null
+          banned_at?: string | null
+          banned_reason?: string | null
           created_at?: string
           email_verified?: boolean | null
           id?: string
@@ -179,6 +257,9 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          banned?: boolean | null
+          banned_at?: string | null
+          banned_reason?: string | null
           created_at?: string
           email_verified?: boolean | null
           id?: string
@@ -356,6 +437,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_settings: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
