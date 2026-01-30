@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreateProperty, useUploadPropertyImage, useAddPropertyImage } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
+import { addisAbabaAreas, cities } from "@/data/addisAbabaAreas";
 import type { Database } from "@/integrations/supabase/types";
 
 const steps = [
@@ -26,9 +27,6 @@ const propertyTypes: { value: Database["public"]["Enums"]["property_type"]; labe
   { value: "villa", label: "Villa", icon: "🏡" },
   { value: "real-estate", label: "Real Estate", icon: "🏗️" },
 ];
-
-const cities = ["Addis Ababa"];
-const areas = ["Bole", "Piassa Arada", "Kazanchis", "CMC", "Megenagna", "Sidist Kilo", "Sarbet", "Mexico"];
 
 export default function ListProperty() {
   const navigate = useNavigate();
@@ -313,7 +311,7 @@ export default function ListProperty() {
                       className="w-full h-11 px-3 rounded-lg bg-secondary border-0 text-sm focus:ring-2 focus:ring-primary/20"
                     >
                       <option value="">Select area</option>
-                      {areas.map((a) => (
+                      {addisAbabaAreas.map((a) => (
                         <option key={a} value={a}>{a}</option>
                       ))}
                     </select>

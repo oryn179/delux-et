@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useProperties, SearchFilters } from "@/hooks/useProperties";
+import { addisAbabaAreas } from "@/data/addisAbabaAreas";
 import { Search as SearchIcon, SlidersHorizontal, X, Loader2, Map, Grid } from "lucide-react";
 import {
   Sheet,
@@ -34,24 +35,8 @@ const propertyTypes = [
   { value: "real-estate", label: "Real Estate" },
 ];
 
-const locations = [
-  "Bole",
-  "Piassa",
-  "Kazanchis",
-  "Megenagna",
-  "CMC",
-  "Gerji",
-  "Sarbet",
-  "Lideta",
-  "Arada",
-  "Kirkos",
-  "Yeka",
-  "Nifas Silk",
-  "Akaki Kality",
-  "Addis Ketema",
-  "Gulele",
-  "Kolfe Keranio",
-];
+// Use the comprehensive Addis Ababa areas from data file
+const locations = addisAbabaAreas;
 
 const amenities = [
   "Parking",
