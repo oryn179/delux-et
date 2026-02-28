@@ -30,7 +30,7 @@ export default function VerifyAccount() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState("");
+  
 
   if (!isAuthenticated || !user) {
     return (
@@ -86,19 +86,24 @@ export default function VerifyAccount() {
   const handleSendEmailVerification = async () => {
     setIsLoading(true);
     try {
-      // Generate a 6-digit code for email (demo mode)
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedCode(code);
-
-      // In production, send via edge function with email service
-      toast({
-        title: "Verification code sent!",
-        description: `Demo mode: Your code is ${code}. In production, this would be sent to your email.`,
+      const { data, error } = await supabase.functions.invoke('send-verification-email', {
+        body: { action: 'send', email: user.email }
       });
-      
-      setIsLoading(false);
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Verification code sent!",
+          description: `A 6-digit code has been sent to ${user.email}`,
+        });
+      } else {
+        throw new Error(data?.error || 'Failed to send verification email');
+      }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to send verification email.", variant: "destructive" });
+      console.error('Email verification error:', error);
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to send verification email.", variant: "destructive" });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -161,9 +166,15 @@ export default function VerifyAccount() {
           return;
         }
       } else {
-        // Email verification (demo mode - check local code)
-        if (verificationCode !== generatedCode) {
-          toast({ title: "Invalid code", description: "The verification code is incorrect.", variant: "destructive" });
+        // Email verification via edge function
+        const { data, error } = await supabase.functions.invoke('send-verification-email', {
+          body: { action: 'verify', email: user.email, code: verificationCode }
+        });
+
+        if (error) throw error;
+
+        if (!data?.success) {
+          toast({ title: "Invalid code", description: data?.error || "The verification code is incorrect.", variant: "destructive" });
           setIsLoading(false);
           return;
         }
