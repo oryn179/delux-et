@@ -27,6 +27,8 @@ import Dashboard from "./pages/Dashboard";
 import Support from "./pages/Support";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { BuyMeCoffeeWidget } from "@/components/BuyMeCoffeeWidget";
 import { ComingSoonWidget } from "@/components/ComingSoonWidget";
@@ -62,6 +64,8 @@ const App = () => (
                     <Route path="/support" element={<Support />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/faq" element={<FAQ />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
