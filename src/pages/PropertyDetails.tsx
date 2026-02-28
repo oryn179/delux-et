@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale, Eye } from "lucide-react";
+import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale, Eye, X, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
@@ -32,6 +32,7 @@ export default function PropertyDetails() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showPhone, setShowPhone] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
+  const [showZoom, setShowZoom] = useState(false);
 
   if (isLoading) {
     return (
@@ -118,12 +119,15 @@ export default function PropertyDetails() {
             {/* Left Column - Images */}
             <div className="lg:col-span-2 space-y-4">
               {/* Main Image */}
-              <div className="relative rounded-2xl overflow-hidden aspect-video bg-muted">
+              <div className="relative rounded-2xl overflow-hidden aspect-video bg-muted group cursor-pointer" onClick={() => setShowZoom(true)}>
                 <img
                   src={images[currentImageIndex]}
                   alt={property.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 />
+                <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/10 transition-colors flex items-center justify-center">
+                  <ZoomIn className="h-8 w-8 text-background opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
                 <div className="absolute top-4 left-4 flex gap-2">
                   {property.is_available && (
                     <Badge className="gradient-primary border-0 text-primary-foreground">Free</Badge>
@@ -137,13 +141,13 @@ export default function PropertyDetails() {
                 {images.length > 1 && (
                   <>
                     <button
-                      onClick={prevImage}
+                      onClick={(e) => { e.stopPropagation(); prevImage(); }}
                       className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition-colors"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
                     <button
-                      onClick={nextImage}
+                      onClick={(e) => { e.stopPropagation(); nextImage(); }}
                       className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition-colors"
                     >
                       <ChevronRight className="h-5 w-5" />
@@ -342,6 +346,40 @@ export default function PropertyDetails() {
         </div>
       </main>
       <Footer />
+
+      {/* Zoom Modal */}
+      {showZoom && (
+        <div className="fixed inset-0 z-50 bg-foreground/90 flex items-center justify-center" onClick={() => setShowZoom(false)}>
+          <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-background/20 backdrop-blur flex items-center justify-center text-background hover:bg-background/40 transition-colors">
+            <X className="h-6 w-6" />
+          </button>
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-background/20 backdrop-blur flex items-center justify-center text-background hover:bg-background/40 transition-colors"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-background/20 backdrop-blur flex items-center justify-center text-background hover:bg-background/40 transition-colors"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+          <img
+            src={images[currentImageIndex]}
+            alt={property.title}
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/20 backdrop-blur rounded-full px-4 py-2 text-background text-sm">
+            {currentImageIndex + 1} / {images.length}
+          </div>
+        </div>
+      )}
 
       <ContactOwnerDialog
         open={showContactDialog}
