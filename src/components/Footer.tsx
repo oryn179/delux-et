@@ -1,25 +1,7 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, Mail, Phone, MapPin, Send } from "lucide-react";
+import { Instagram, Mail, Phone, MapPin, Send } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import deluxLogo from "@/assets/delux-logo.png";
-
-const footerLinks = {
-  company: [
-    { name: "About Us", href: "/about" },
-    { name: "Contact", href: "/contact" },
-    { name: "Support Us", href: "/support" },
-  ],
-  support: [
-    { name: "Help Center", href: "/contact" },
-    { name: "Safety", href: "#" },
-    { name: "Terms of Service", href: "#" },
-    { name: "Privacy Policy", href: "#" },
-  ],
-  listings: [
-    { name: "Browse Homes", href: "/search" },
-    { name: "List Property", href: "/list-property" },
-    { name: "Favorites", href: "/favorites" },
-  ],
-};
 
 const TikTokIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -34,6 +16,8 @@ const socialLinks = [
 ];
 
 export function Footer() {
+  const { t } = useLanguage();
+
   return (
     <footer id="contact" className="bg-secondary/50 border-t border-border">
       <div className="container py-12 md:py-16">
@@ -44,8 +28,7 @@ export function Footer() {
               <img src={deluxLogo} alt="Delux" className="h-10 w-auto" />
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm">
-              Delux — a free housing connection platform. It's connection.
-              Delux connects people, not payments.
+              {t("footer.tagline")}
             </p>
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
@@ -81,61 +64,40 @@ export function Footer() {
 
           {/* Links */}
           <div>
-            <h4 className="font-semibold mb-4">Company</h4>
+            <h4 className="font-semibold mb-4">{t("footer.company")}</h4>
             <ul className="space-y-2">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
+              <li><a href="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.aboutUs")}</a></li>
+              <li><a href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.contact")}</a></li>
+              <li><a href="/support" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.supportUs")}</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Support</h4>
+            <h4 className="font-semibold mb-4">{t("footer.support")}</h4>
             <ul className="space-y-2">
-              {footerLinks.support.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
+              <li><a href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.helpCenter")}</a></li>
+              <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.safety")}</a></li>
+              <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.terms")}</a></li>
+              <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.privacy")}</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Listings</h4>
+            <h4 className="font-semibold mb-4">{t("footer.listings")}</h4>
             <ul className="space-y-2">
-              {footerLinks.listings.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
+              <li><a href="/search" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.browseHomes")}</a></li>
+              <li><a href="/list-property" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.listProperty")}</a></li>
+              <li><a href="/favorites" className="text-sm text-muted-foreground hover:text-primary transition-colors">{t("footer.favorites")}</a></li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Delux. All rights reserved.
+            © {new Date().getFullYear()} Delux. {t("footer.rights")}
           </p>
           <p className="text-sm text-muted-foreground">
-            Made with ❤️ in Ethiopia
+            {t("footer.madeWith")}
           </p>
         </div>
       </div>

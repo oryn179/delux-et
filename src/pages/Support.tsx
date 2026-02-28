@@ -2,8 +2,11 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Coffee, Heart, ExternalLink } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Support() {
+  const { t } = useLanguage();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -15,22 +18,17 @@ export default function Support() {
             </div>
             
             <h1 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              Support <span className="text-gradient">Delux</span>
+              {t("support.title")} <span className="text-gradient">Delux</span>
             </h1>
             
-            <p className="text-muted-foreground mb-8 text-lg">
-              Delux is a free platform connecting homeowners and renters in Ethiopia. 
-              Your support helps us keep the platform running and growing!
-            </p>
+            <p className="text-muted-foreground mb-8 text-lg">{t("support.subtitle")}</p>
             
             <div className="bg-accent/50 rounded-xl p-6 mb-8">
               <div className="flex items-center justify-center gap-2 mb-4">
                 <Heart className="h-5 w-5 text-destructive" />
-                <span className="font-semibold">Buy us a coffee!</span>
+                <span className="font-semibold">{t("support.buyUs")}</span>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Every contribution helps us maintain and improve Delux for our community.
-              </p>
+              <p className="text-sm text-muted-foreground mb-4">{t("support.contribution")}</p>
             </div>
             
             <Button
@@ -39,13 +37,11 @@ export default function Support() {
               onClick={() => window.open("https://buymeacoffee.com/delux", "_blank")}
             >
               <Coffee className="h-5 w-5" />
-              Buy Me a Coffee
+              {t("support.buyCoffee")}
               <ExternalLink className="h-4 w-4" />
             </Button>
             
-            <p className="text-sm text-muted-foreground mt-8">
-              Thank you for being part of the Delux community! 🇪🇹
-            </p>
+            <p className="text-sm text-muted-foreground mt-8">{t("support.thanks")}</p>
           </div>
         </div>
       </main>
