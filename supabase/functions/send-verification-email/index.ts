@@ -1,12 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
-
-// Simple in-memory store for verification codes (per instance)
-const verificationCodes = new Map<string, { code: string; expiresAt: number }>();
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,17 +20,28 @@ serve(async (req) => {
       );
     }
 
-    const { action, email, code } = await req.json();
+    const { action, email, token, userId } = await req.json();
 
     if (action === 'send') {
-      // Generate 6-digit code
-      const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // Generate a secure token
+      const verifyToken = crypto.randomUUID();
       
-      // Store code with 10 min expiry
-      verificationCodes.set(email, {
-        code: verifyCode,
-        expiresAt: Date.now() + 10 * 60 * 1000,
-      });
+      // Store token in profiles table via verification_method field temporarily
+      // We'll use a dedicated approach: store token in system_settings
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      // Store verification token with expiry
+      await supabase.from('system_settings').upsert({
+        key: `email_verify_${email}`,
+        value: { token: verifyToken, expires_at: Date.now() + 30 * 60 * 1000 },
+        description: 'Email verification token',
+      }, { onConflict: 'key' });
+
+      // Build verification link
+      const origin = req.headers.get('origin') || 'https://delux-et.lovable.app';
+      const verifyLink = `${origin}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email)}`;
 
       // Send via Resend
       const res = await fetch('https://api.resend.com/emails', {
@@ -44,15 +53,18 @@ serve(async (req) => {
         body: JSON.stringify({
           from: 'Delux <onboarding@resend.dev>',
           to: [email],
-          subject: 'Your Delux Verification Code',
+          subject: 'Verify Your Delux Account',
           html: `
             <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#fff;border-radius:12px;">
               <h1 style="color:#1a1a1a;font-size:24px;margin-bottom:8px;">Verify Your Delux Account</h1>
-              <p style="color:#666;font-size:14px;margin-bottom:24px;">Use the code below to complete your verification. It expires in 10 minutes.</p>
-              <div style="background:#f4f4f5;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px;">
-                <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a1a1a;">${verifyCode}</span>
+              <p style="color:#666;font-size:14px;margin-bottom:24px;">Click the button below to verify your email address. This link expires in 30 minutes.</p>
+              <div style="text-align:center;margin-bottom:24px;">
+                <a href="${verifyLink}" style="display:inline-block;background:#1a1a1a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
+                  ✅ Verify My Account
+                </a>
               </div>
               <p style="color:#999;font-size:12px;">If you didn't request this, you can safely ignore this email.</p>
+              <p style="color:#ccc;font-size:11px;margin-top:16px;">Or copy this link: ${verifyLink}</p>
             </div>
           `,
         }),
@@ -73,24 +85,53 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else if (action === 'verify') {
-      const stored = verificationCodes.get(email);
-      
-      if (!stored || Date.now() > stored.expiresAt) {
-        verificationCodes.delete(email);
+      // Verify the token from the link
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data: setting } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', `email_verify_${email}`)
+        .maybeSingle();
+
+      if (!setting) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Code expired or not found' }),
+          JSON.stringify({ success: false, error: 'Verification link expired or not found' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      if (stored.code !== code) {
+      const stored = setting.value as { token: string; expires_at: number };
+
+      if (Date.now() > stored.expires_at) {
+        await supabase.from('system_settings').delete().eq('key', `email_verify_${email}`);
         return new Response(
-          JSON.stringify({ success: false, error: 'Invalid code' }),
+          JSON.stringify({ success: false, error: 'Verification link has expired' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      verificationCodes.delete(email);
+      if (stored.token !== token) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid verification link' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Mark user as verified
+      if (userId) {
+        await supabase.from('profiles').update({
+          verified: true,
+          email_verified: true,
+          verification_method: 'email',
+        }).eq('user_id', userId);
+      }
+
+      // Clean up token
+      await supabase.from('system_settings').delete().eq('key', `email_verify_${email}`);
+
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
