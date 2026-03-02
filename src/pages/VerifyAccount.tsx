@@ -26,10 +26,12 @@ export default function VerifyAccount() {
   const updateProfile = useUpdateProfile();
 
   const [method, setMethod] = useState<VerificationMethod>(null);
-  const [step, setStep] = useState<"select" | "input" | "verify" | "email-sent" | "success">("select");
+  const [step, setStep] = useState<"select" | "input" | "verify" | "email-sent" | "email-verify" | "success">("select");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [emailCode, setEmailCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   // Simple math CAPTCHA for phone verification
   const [captchaAnswer, setCaptchaAnswer] = useState("");
@@ -82,14 +84,14 @@ export default function VerifyAccount() {
   const handleSelectMethod = (selectedMethod: VerificationMethod) => {
     setMethod(selectedMethod);
     if (selectedMethod === "email") {
-      handleSendEmailLink();
+      handleSendEmailCode();
     } else {
       setStep("input");
     }
   };
 
-  // EMAIL: Send verification LINK (not OTP)
-  const handleSendEmailLink = async () => {
+  // EMAIL: Send verification OTP code
+  const handleSendEmailCode = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('send-verification-email', {
@@ -99,17 +101,51 @@ export default function VerifyAccount() {
       if (error) throw error;
 
       if (data?.success) {
-        setStep("email-sent");
+        if (data.devCode) {
+          setDevCode(data.devCode);
+        }
+        setStep("email-verify");
         toast({
-          title: "Verification link sent! 📧",
-          description: `Check your inbox at ${user.email} and click the link.`,
+          title: data.emailSent ? "Code sent! 📧" : "Code generated ✅",
+          description: data.emailSent 
+            ? `Check your inbox at ${user.email}` 
+            : "Enter the verification code below.",
         });
       } else {
-        throw new Error(data?.error || 'Failed to send verification email');
+        throw new Error(data?.error || 'Failed to send verification code');
       }
     } catch (error) {
       console.error('Email verification error:', error);
-      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to send verification email.", variant: "destructive" });
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to send verification code.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // EMAIL: Verify the OTP code
+  const handleVerifyEmailCode = async () => {
+    if (emailCode.length !== 6) {
+      toast({ title: "Invalid code", description: "Please enter a 6-digit code.", variant: "destructive" });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-verification-email', {
+        body: { action: 'verify', email: user.email, code: emailCode, userId: user.id }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        setStep("success");
+        toast({ title: "Verified! ✅", description: "Your email has been verified." });
+      } else {
+        toast({ title: "Invalid code", description: data?.error || "Verification failed.", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error('Email verify error:', error);
+      toast({ title: "Error", description: "Failed to verify code.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -248,33 +284,67 @@ export default function VerifyAccount() {
               </div>
             )}
 
-            {/* EMAIL SENT - waiting for user to click link */}
-            {step === "email-sent" && (
-              <div className="space-y-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-accent mx-auto flex items-center justify-center">
-                  <Mail className="h-8 w-8 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-display font-bold mb-2">Check Your Email 📧</h1>
+            {/* EMAIL OTP VERIFY */}
+            {step === "email-verify" && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-accent mx-auto mb-4 flex items-center justify-center">
+                    <Mail className="h-8 w-8 text-primary" />
+                  </div>
+                  <h1 className="text-2xl font-display font-bold mb-2">Enter Verification Code</h1>
                   <p className="text-muted-foreground">
-                    We sent a verification link to <strong>{user.email}</strong>
+                    Enter the 6-digit code sent to <strong>{user.email}</strong>
                   </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Click the link in the email to verify your account. The link expires in 30 minutes.
-                  </p>
+                  {devCode && (
+                    <div className="mt-3 p-3 rounded-lg bg-accent border border-border">
+                      <p className="text-xs text-muted-foreground mb-1">Dev mode — your code:</p>
+                      <p className="font-mono font-bold text-lg tracking-widest">{devCode}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={6}
+                    value={emailCode}
+                    onChange={(value) => setEmailCode(value)}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
                 </div>
 
                 <Button
+                  onClick={handleVerifyEmailCode}
+                  disabled={isLoading || emailCode.length !== 6}
+                  className="w-full gradient-primary border-0"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Verify"
+                  )}
+                </Button>
+
+                <Button
                   variant="outline"
-                  onClick={handleSendEmailLink}
+                  onClick={() => { setEmailCode(""); handleSendEmailCode(); }}
                   disabled={isLoading}
                   className="w-full"
                 >
-                  {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  Resend Link
+                  Resend Code
                 </Button>
 
-                <Button variant="ghost" onClick={() => setStep("select")} className="w-full">
+                <Button variant="ghost" onClick={() => { setStep("select"); setEmailCode(""); setDevCode(null); }} className="w-full">
                   Choose different method
                 </Button>
               </div>

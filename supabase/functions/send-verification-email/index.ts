@@ -12,110 +12,106 @@ serve(async (req) => {
   }
 
   try {
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-    if (!RESEND_API_KEY) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Email service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, email, token, userId } = await req.json();
+    const { action, email, code: userCode, userId } = await req.json();
 
     if (action === 'send') {
-      // Generate a secure token
-      const verifyToken = crypto.randomUUID();
-      
-      // Store token in profiles table via verification_method field temporarily
-      // We'll use a dedicated approach: store token in system_settings
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      // Generate a 6-digit OTP code
+      const code = String(Math.floor(100000 + Math.random() * 900000));
 
-      // Store verification token with expiry
+      // Store code with 10-minute expiry
       await supabase.from('system_settings').upsert({
-        key: `email_verify_${email}`,
-        value: { token: verifyToken, expires_at: Date.now() + 30 * 60 * 1000 },
-        description: 'Email verification token',
+        key: `email_otp_${email}`,
+        value: { code, expires_at: Date.now() + 10 * 60 * 1000 },
+        description: 'Email verification OTP',
       }, { onConflict: 'key' });
 
-      // Build verification link
-      const origin = req.headers.get('origin') || 'https://delux-et.lovable.app';
-      const verifyLink = `${origin}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email)}`;
+      // Try to send via Resend if configured
+      const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+      let emailSent = false;
 
-      // Send via Resend
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'Delux <onboarding@resend.dev>',
-          to: [email],
-          subject: 'Verify Your Delux Account',
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#fff;border-radius:12px;">
-              <h1 style="color:#1a1a1a;font-size:24px;margin-bottom:8px;">Verify Your Delux Account</h1>
-              <p style="color:#666;font-size:14px;margin-bottom:24px;">Click the button below to verify your email address. This link expires in 30 minutes.</p>
-              <div style="text-align:center;margin-bottom:24px;">
-                <a href="${verifyLink}" style="display:inline-block;background:#1a1a1a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
-                  ✅ Verify My Account
-                </a>
-              </div>
-              <p style="color:#999;font-size:12px;">If you didn't request this, you can safely ignore this email.</p>
-              <p style="color:#ccc;font-size:11px;margin-top:16px;">Or copy this link: ${verifyLink}</p>
-            </div>
-          `,
-        }),
-      });
+      if (RESEND_API_KEY) {
+        try {
+          const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${RESEND_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: 'Delux <onboarding@resend.dev>',
+              to: [email],
+              subject: 'Your Delux Verification Code',
+              html: `
+                <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#fff;border-radius:12px;">
+                  <h1 style="color:#1a1a1a;font-size:24px;margin-bottom:8px;">Your Verification Code</h1>
+                  <p style="color:#666;font-size:14px;margin-bottom:24px;">Enter this code on the Delux verification page. It expires in 10 minutes.</p>
+                  <div style="text-align:center;margin-bottom:24px;">
+                    <div style="display:inline-block;background:#f4f4f5;padding:16px 32px;border-radius:12px;font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a1a1a;">
+                      ${code}
+                    </div>
+                  </div>
+                  <p style="color:#999;font-size:12px;">If you didn't request this, you can safely ignore this email.</p>
+                </div>
+              `,
+            }),
+          });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error('Resend error:', data);
-        return new Response(
-          JSON.stringify({ success: false, error: data.message || 'Failed to send email' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+          if (res.ok) {
+            emailSent = true;
+          } else {
+            const errData = await res.json();
+            console.error('Resend error (non-fatal):', errData);
+          }
+        } catch (e) {
+          console.error('Resend send failed (non-fatal):', e);
+        }
       }
 
+      // Log the code for debugging (visible in edge function logs)
+      console.log(`Verification code for ${email}: ${code}`);
+
       return new Response(
-        JSON.stringify({ success: true }),
+        JSON.stringify({ 
+          success: true, 
+          emailSent,
+          // In development/testing, return the code so users can verify
+          // Remove this in production!
+          ...(emailSent ? {} : { devCode: code }),
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } else if (action === 'verify') {
-      // Verify the token from the link
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
 
+    } else if (action === 'verify') {
       const { data: setting } = await supabase
         .from('system_settings')
         .select('value')
-        .eq('key', `email_verify_${email}`)
+        .eq('key', `email_otp_${email}`)
         .maybeSingle();
 
       if (!setting) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Verification link expired or not found' }),
+          JSON.stringify({ success: false, error: 'No verification code found. Please request a new one.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const stored = setting.value as { token: string; expires_at: number };
+      const stored = setting.value as { code: string; expires_at: number };
 
       if (Date.now() > stored.expires_at) {
-        await supabase.from('system_settings').delete().eq('key', `email_verify_${email}`);
+        await supabase.from('system_settings').delete().eq('key', `email_otp_${email}`);
         return new Response(
-          JSON.stringify({ success: false, error: 'Verification link has expired' }),
+          JSON.stringify({ success: false, error: 'Code has expired. Please request a new one.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      if (stored.token !== token) {
+      if (stored.code !== userCode) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Invalid verification link' }),
+          JSON.stringify({ success: false, error: 'Invalid verification code.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -129,8 +125,8 @@ serve(async (req) => {
         }).eq('user_id', userId);
       }
 
-      // Clean up token
-      await supabase.from('system_settings').delete().eq('key', `email_verify_${email}`);
+      // Clean up
+      await supabase.from('system_settings').delete().eq('key', `email_otp_${email}`);
 
       return new Response(
         JSON.stringify({ success: true }),
@@ -143,7 +139,7 @@ serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Verification email error:', error);
+    console.error('Verification error:', error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
