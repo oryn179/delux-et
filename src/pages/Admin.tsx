@@ -4,7 +4,7 @@ import {
   Users, Home, Shield, Settings, LogIn, CheckCircle, XCircle, Trash2,
   Edit2, UserPlus, Loader2, ArrowLeft, BadgeCheck, DollarSign, Activity,
   Ban, UserX, Key, Eye, ToggleLeft, ToggleRight, Crown, AlertTriangle,
-  LogOut, RefreshCw, Send, Mail, BarChart3, Rocket,
+  LogOut, RefreshCw, Send, Mail, BarChart3, Rocket, Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
