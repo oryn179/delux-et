@@ -28,6 +28,9 @@ export default function SignIn() {
     setIsLoading(true);
 
     try {
+      if (referralCode.trim()) {
+        localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
+      }
       await signIn(email, password);
       toast({
         title: "Welcome back!",
