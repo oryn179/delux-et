@@ -30,9 +30,10 @@ import FAQ from "./pages/FAQ";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
+import Referral from "./pages/Referral";
 import NotFound from "./pages/NotFound";
 import { BuyMeCoffeeWidget } from "@/components/BuyMeCoffeeWidget";
-import { ComingSoonWidget } from "@/components/ComingSoonWidget";
+import { InviteWidget } from "@/components/InviteWidget";
 
 const queryClient = new QueryClient();
 
@@ -68,13 +69,13 @@ const App = () => (
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/verify-email" element={<VerifyEmail />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/referral" element={<Referral />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                   <CompareBar />
                   <BuyMeCoffeeWidget />
-                  <ComingSoonWidget />
+                  <InviteWidget />
                 </CompareProvider>
               </FavoritesProvider>
             </AuthProvider>

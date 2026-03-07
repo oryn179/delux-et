@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, CheckCircle, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,14 +9,6 @@ import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-
-type VerificationMethod = "email" | "phone" | null;
 
 export default function VerifyAccount() {
   const navigate = useNavigate();
@@ -25,21 +17,16 @@ export default function VerifyAccount() {
   const { data: profile } = useProfile(user?.id);
   const updateProfile = useUpdateProfile();
 
-  const [method, setMethod] = useState<VerificationMethod>(null);
-  const [step, setStep] = useState<"select" | "input" | "verify" | "email-sent" | "email-verify" | "success">("select");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
-  const [emailCode, setEmailCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [devCode, setDevCode] = useState<string | null>(null);
+  const [step, setStep] = useState<"quiz" | "success">("quiz");
 
-  // Simple math CAPTCHA for phone verification
-  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  // Security questions
   const captcha = useMemo(() => {
     const a = Math.floor(Math.random() * 10) + 1;
     const b = Math.floor(Math.random() * 10) + 1;
     return { a, b, answer: a + b };
-  }, [step]);
+  }, []);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
 
   if (!isAuthenticated || !user) {
     return (
@@ -71,9 +58,7 @@ export default function VerifyAccount() {
             </div>
             <h1 className="text-2xl font-display font-bold mb-2">Already Verified!</h1>
             <p className="text-muted-foreground mb-6">Your account is already verified.</p>
-            <Button onClick={() => navigate("/list-property")} className="gradient-primary border-0">
-              Create Listing
-            </Button>
+            <Button onClick={() => navigate("/list-property")} className="gradient-primary border-0">Create Listing</Button>
           </div>
         </main>
         <Footer />
@@ -81,147 +66,21 @@ export default function VerifyAccount() {
     );
   }
 
-  const handleSelectMethod = (selectedMethod: VerificationMethod) => {
-    setMethod(selectedMethod);
-    if (selectedMethod === "email") {
-      handleSendEmailCode();
-    } else {
-      setStep("input");
-    }
-  };
-
-  // EMAIL: Send verification OTP code
-  const handleSendEmailCode = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-verification-email', {
-        body: { action: 'send', email: user.email }
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        if (data.devCode) {
-          setDevCode(data.devCode);
-        }
-        setStep("email-verify");
-        toast({
-          title: data.emailSent ? "Code sent! 📧" : "Code generated ✅",
-          description: data.emailSent 
-            ? `Check your inbox at ${user.email}` 
-            : "Enter the verification code below.",
-        });
-      } else {
-        throw new Error(data?.error || 'Failed to send verification code');
-      }
-    } catch (error) {
-      console.error('Email verification error:', error);
-      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to send verification code.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // EMAIL: Verify the OTP code
-  const handleVerifyEmailCode = async () => {
-    if (emailCode.length !== 6) {
-      toast({ title: "Invalid code", description: "Please enter a 6-digit code.", variant: "destructive" });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-verification-email', {
-        body: { action: 'verify', email: user.email, code: emailCode, userId: user.id }
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        setStep("success");
-        toast({ title: "Verified! ✅", description: "Your email has been verified." });
-      } else {
-        toast({ title: "Invalid code", description: data?.error || "Verification failed.", variant: "destructive" });
-      }
-    } catch (error) {
-      console.error('Email verify error:', error);
-      toast({ title: "Error", description: "Failed to verify code.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // PHONE: Validate CAPTCHA, then send SMS code
-  const handleSendPhoneVerification = async () => {
+  const handleVerify = async () => {
     if (parseInt(captchaAnswer) !== captcha.answer) {
       toast({ title: "Wrong answer", description: "Please solve the math problem correctly.", variant: "destructive" });
       return;
     }
 
-    if (!phoneNumber || phoneNumber.length < 9) {
-      toast({ title: "Invalid phone", description: "Please enter a valid phone number.", variant: "destructive" });
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('twilio-verify', {
-        body: { action: 'send', phone: phoneNumber }
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        toast({
-          title: "Code sent! 📱",
-          description: `A code has been sent to +251 ${phoneNumber}`,
-        });
-        setStep("verify");
-      } else {
-        throw new Error(data?.error || 'Failed to send verification code');
-      }
-    } catch (error) {
-      console.error('Phone verification error:', error);
-      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to send SMS.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyPhoneCode = async () => {
-    if (verificationCode.length !== 6) {
-      toast({ title: "Invalid code", description: "Please enter a 6-digit code.", variant: "destructive" });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('twilio-verify', {
-        body: { action: 'verify', phone: phoneNumber, code: verificationCode }
-      });
-
-      if (error) throw error;
-
-      if (!data?.success) {
-        toast({ title: "Invalid code", description: "The verification code is incorrect.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-      }
-
       await updateProfile.mutateAsync({
         userId: user.id,
-        updates: {
-          verified: true,
-          verification_method: "phone",
-          phone_verified: true,
-          phone: phoneNumber,
-        },
+        updates: { verified: true, verification_method: "security_question" },
       });
-
       setStep("success");
       toast({ title: "Verified! ✅", description: "Your account has been verified." });
     } catch (error) {
-      console.error('Verification error:', error);
       toast({ title: "Error", description: "Failed to verify account.", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -234,258 +93,66 @@ export default function VerifyAccount() {
       <main className="flex-1 py-8 bg-secondary/30">
         <div className="container max-w-md">
           <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2 mb-6">
-            <ArrowLeft className="h-4 w-4" />
-            Back
+            <ArrowLeft className="h-4 w-4" /> Back
           </Button>
 
           <div className="bg-card rounded-2xl p-6 md:p-8 shadow-card border border-border">
-            {/* SELECT METHOD */}
-            {step === "select" && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h1 className="text-2xl font-display font-bold mb-2">Verify Your Account</h1>
-                  <p className="text-muted-foreground">
-                    Verification is required to post property listings.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <button
-                    onClick={() => handleSelectMethod("email")}
-                    disabled={isLoading}
-                    className="w-full p-4 rounded-xl border-2 border-border hover:border-primary/50 transition-all flex items-center gap-4"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
-                      <Mail className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium">Email Verification</p>
-                      <p className="text-sm text-muted-foreground">
-                        We'll send a link to {user.email}
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleSelectMethod("phone")}
-                    className="w-full p-4 rounded-xl border-2 border-border hover:border-primary/50 transition-all flex items-center gap-4"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
-                      <Phone className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium">Phone Verification (SMS)</p>
-                      <p className="text-sm text-muted-foreground">
-                        We'll send an SMS to your phone
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* EMAIL OTP VERIFY */}
-            {step === "email-verify" && (
+            {step === "quiz" && (
               <div className="space-y-6">
                 <div className="text-center">
                   <div className="w-16 h-16 rounded-full bg-accent mx-auto mb-4 flex items-center justify-center">
-                    <Mail className="h-8 w-8 text-primary" />
+                    <ShieldCheck className="h-8 w-8 text-primary" />
                   </div>
-                  <h1 className="text-2xl font-display font-bold mb-2">Enter Verification Code</h1>
-                  <p className="text-muted-foreground">
-                    Enter the 6-digit code sent to <strong>{user.email}</strong>
-                  </p>
-                  {devCode && (
-                    <div className="mt-3 p-3 rounded-lg bg-accent border border-border">
-                      <p className="text-xs text-muted-foreground mb-1">Dev mode — your code:</p>
-                      <p className="font-mono font-bold text-lg tracking-widest">{devCode}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-center">
-                  <InputOTP
-                    maxLength={6}
-                    value={emailCode}
-                    onChange={(value) => setEmailCode(value)}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-
-                <Button
-                  onClick={handleVerifyEmailCode}
-                  disabled={isLoading || emailCode.length !== 6}
-                  className="w-full gradient-primary border-0"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    "Verify"
-                  )}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() => { setEmailCode(""); handleSendEmailCode(); }}
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  Resend Code
-                </Button>
-
-                <Button variant="ghost" onClick={() => { setStep("select"); setEmailCode(""); setDevCode(null); }} className="w-full">
-                  Choose different method
-                </Button>
-              </div>
-            )}
-
-            {/* PHONE INPUT + CAPTCHA */}
-            {step === "input" && method === "phone" && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h1 className="text-2xl font-display font-bold mb-2">Enter Phone Number</h1>
-                  <p className="text-muted-foreground">
-                    We'll send a verification code via SMS
-                  </p>
+                  <h1 className="text-2xl font-display font-bold mb-2">Verify Your Account</h1>
+                  <p className="text-muted-foreground">Solve the simple question below to verify you're human.</p>
                 </div>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Phone Number</Label>
-                    <div className="flex gap-2">
-                      <div className="w-20 h-11 px-3 rounded-lg bg-secondary border-0 flex items-center justify-center text-sm">
-                        +251
-                      </div>
-                      <Input
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
-                        placeholder="91 234 5678"
-                        className="flex-1"
-                        maxLength={10}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Human verification - math CAPTCHA */}
-                  <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <ShieldCheck className="h-4 w-4 text-primary" />
-                      Prove you're human
+                      What is the answer?
                     </Label>
                     <div className="flex items-center gap-3">
-                      <div className="px-4 py-2 rounded-lg bg-secondary font-mono font-bold text-lg">
+                      <div className="px-4 py-3 rounded-xl bg-secondary font-mono font-bold text-xl">
                         {captcha.a} + {captcha.b} = ?
                       </div>
                       <Input
                         value={captchaAnswer}
                         onChange={(e) => setCaptchaAnswer(e.target.value.replace(/\D/g, ""))}
                         placeholder="Answer"
-                        className="w-24"
+                        className="w-24 text-lg"
                         maxLength={3}
                       />
                     </div>
                   </div>
 
                   <Button
-                    onClick={handleSendPhoneVerification}
-                    disabled={isLoading || phoneNumber.length < 9 || !captchaAnswer}
+                    onClick={handleVerify}
+                    disabled={isLoading || !captchaAnswer}
                     className="w-full gradient-primary border-0"
                   >
                     {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Sending...
-                      </>
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Verifying...</>
                     ) : (
-                      "Send Code"
+                      "Verify Account"
                     )}
                   </Button>
-
-                  <Button variant="ghost" onClick={() => { setStep("select"); setCaptchaAnswer(""); }} className="w-full">
-                    Choose different method
-                  </Button>
                 </div>
               </div>
             )}
 
-            {/* PHONE OTP VERIFY */}
-            {step === "verify" && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h1 className="text-2xl font-display font-bold mb-2">Enter Verification Code</h1>
-                  <p className="text-muted-foreground">
-                    We sent a 6-digit code to +251 {phoneNumber}
-                  </p>
-                </div>
-
-                <div className="flex justify-center">
-                  <InputOTP
-                    maxLength={6}
-                    value={verificationCode}
-                    onChange={(value) => setVerificationCode(value)}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-
-                <Button
-                  onClick={handleVerifyPhoneCode}
-                  disabled={isLoading || verificationCode.length !== 6}
-                  className="w-full gradient-primary border-0"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    "Verify"
-                  )}
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  onClick={() => { setStep("input"); setVerificationCode(""); }}
-                  className="w-full"
-                >
-                  Resend Code
-                </Button>
-              </div>
-            )}
-
-            {/* SUCCESS */}
             {step === "success" && (
-              <div className="space-y-6 text-center">
+              <div className="text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-green-100 mx-auto flex items-center justify-center">
                   <CheckCircle className="h-8 w-8 text-green-600" />
                 </div>
-                <div>
-                  <h1 className="text-2xl font-display font-bold mb-2">Verification Complete! ✅</h1>
-                  <p className="text-muted-foreground">
-                    Your account is now verified. You can start posting property listings.
-                  </p>
+                <h1 className="text-2xl font-display font-bold">Account Verified!</h1>
+                <p className="text-muted-foreground">You can now post property listings.</p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => navigate("/")} className="flex-1">Go Home</Button>
+                  <Button onClick={() => navigate("/list-property")} className="flex-1 gradient-primary border-0">Create Listing</Button>
                 </div>
-                <Button onClick={() => navigate("/list-property")} className="gradient-primary border-0">
-                  Create Your First Listing
-                </Button>
               </div>
             )}
           </div>

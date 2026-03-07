@@ -4,7 +4,7 @@ import {
   Users, Home, Shield, Settings, LogIn, CheckCircle, XCircle, Trash2,
   Edit2, UserPlus, Loader2, ArrowLeft, BadgeCheck, DollarSign, Activity,
   Ban, UserX, Key, Eye, ToggleLeft, ToggleRight, Crown, AlertTriangle,
-  LogOut, RefreshCw, Send, Mail, BarChart3, Rocket,
+  LogOut, RefreshCw, Send, Mail, BarChart3, Rocket, Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,8 @@ export default function Admin() {
   const [banReason, setBanReason] = useState("");
   const [propertyViews, setPropertyViews] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [referralPrize, setReferralPrize] = useState("20");
   
   // Admin messaging state
   const [selectedUserForMessage, setSelectedUserForMessage] = useState<any>(null);
@@ -73,7 +75,7 @@ export default function Admin() {
 
   const fetchAllData = async () => {
     try {
-      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes] = await Promise.all([
+      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes, referralsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("properties").select("*, property_images(*)").order("created_at", { ascending: false }),
         supabase.from("login_history").select("*").order("logged_in_at", { ascending: false }).limit(100),
@@ -83,6 +85,7 @@ export default function Admin() {
         supabase.from("system_settings").select("*").order("key", { ascending: true }),
         supabase.from("property_views").select("*").order("viewed_at", { ascending: false }).limit(500),
         supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("referrals").select("*").order("created_at", { ascending: false }),
       ]);
 
       setProfiles(profilesRes.data || []);
@@ -94,12 +97,15 @@ export default function Admin() {
       setSystemSettings(settingsRes.data || []);
       setPropertyViews(viewsRes.data || []);
       setMessages(messagesRes.data || []);
+      setReferrals(referralsRes.data || []);
 
       // Load coming soon settings
       const titleSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_title");
       const msgSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_message");
+      const prizeSetting = (settingsRes.data || []).find((s: any) => s.key === "referral_prize");
       if (titleSetting?.value) setComingSoonTitle(String(titleSetting.value).replace(/^"|"$/g, ''));
       if (msgSetting?.value) setComingSoonMessage(String(msgSetting.value).replace(/^"|"$/g, ''));
+      if (prizeSetting?.value) setReferralPrize(String(prizeSetting.value).replace(/^"|"$/g, ''));
     } catch (error) { console.error("Error fetching data:", error); }
   };
 
@@ -346,6 +352,7 @@ export default function Admin() {
               <TabsTrigger value="admins" className="gap-2"><Crown className="h-4 w-4" />Admins</TabsTrigger>
               <TabsTrigger value="messaging" className="gap-2"><Send className="h-4 w-4" />Messaging</TabsTrigger>
               <TabsTrigger value="comingsoon" className="gap-2"><Rocket className="h-4 w-4" />Coming Soon</TabsTrigger>
+              <TabsTrigger value="referrals" className="gap-2"><Gift className="h-4 w-4" />Referrals</TabsTrigger>
             </TabsList>
 
             {/* Analytics Tab */}
@@ -817,6 +824,100 @@ export default function Admin() {
                   <Button onClick={handleSaveComingSoon} disabled={isSavingComingSoon} className="gradient-primary border-0 gap-2">
                     {isSavingComingSoon ? <><Loader2 className="h-4 w-4 animate-spin" />Saving...</> : "Save Changes"}
                   </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Referrals Tab */}
+            <TabsContent value="referrals">
+              <div className="bg-card rounded-2xl p-6 shadow-card border border-border space-y-6">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Gift className="h-5 w-5 text-primary" /> Referral Management
+                </h2>
+
+                {/* Prize Setting */}
+                <div className="space-y-2">
+                  <Label>Referral Prize (ETB per signup)</Label>
+                  <div className="flex gap-2 max-w-xs">
+                    <Input
+                      type="number"
+                      value={referralPrize}
+                      onChange={(e) => setReferralPrize(e.target.value)}
+                      className="w-32"
+                    />
+                    <Button
+                      className="gradient-primary border-0"
+                      onClick={async () => {
+                        const { data: existing } = await supabase.from("system_settings").select("id").eq("key", "referral_prize").maybeSingle();
+                        if (existing) {
+                          await supabase.from("system_settings").update({ value: JSON.stringify(referralPrize), updated_by: user!.id, updated_at: new Date().toISOString() }).eq("id", existing.id);
+                        } else {
+                          await supabase.from("system_settings").insert({ key: "referral_prize", value: JSON.stringify(referralPrize), description: "ETB per referral signup", updated_by: user!.id });
+                        }
+                        await logAdminAction("update_referral_prize", "setting", "referral_prize", { value: referralPrize });
+                        toast({ title: "Prize updated", description: `Referral prize set to ${referralPrize} ETB.` });
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Referrals Table */}
+                <div>
+                  <h3 className="font-medium mb-2">All Referrals ({referrals.length})</h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Referrer</TableHead>
+                          <TableHead>Referred User</TableHead>
+                          <TableHead>Credited</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {referrals.map((ref: any) => {
+                          const referrer = getProfileByUserId(ref.referrer_id);
+                          const referred = getProfileByUserId(ref.referred_user_id);
+                          return (
+                            <TableRow key={ref.id}>
+                              <TableCell className="font-medium">{referrer?.name || ref.referrer_id.slice(0, 8)}</TableCell>
+                              <TableCell>{referred?.name || ref.referred_user_id.slice(0, 8)}</TableCell>
+                              <TableCell>
+                                {ref.credited ? (
+                                  <Badge className="bg-primary/10 text-primary">Credited</Badge>
+                                ) : (
+                                  <Badge variant="secondary">Pending</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm">{format(new Date(ref.created_at), "MMM d, yyyy")}</TableCell>
+                              <TableCell>
+                                {!ref.credited && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={async () => {
+                                      await supabase.from("referrals").update({ credited: true }).eq("id", ref.id);
+                                      await logAdminAction("credit_referral", "referral", ref.id, { referrer_id: ref.referrer_id, amount: referralPrize });
+                                      toast({ title: "Referral credited", description: `${referralPrize} ETB credited.` });
+                                      fetchAllData();
+                                    }}
+                                  >
+                                    Credit {referralPrize} ETB
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {referrals.length === 0 && (
+                          <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No referrals yet</TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             </TabsContent>

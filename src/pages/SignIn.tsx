@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
 
   const { signIn, signInWithGoogle } = useAuth();
   const { toast } = useToast();
@@ -27,6 +28,9 @@ export default function SignIn() {
     setIsLoading(true);
 
     try {
+      if (referralCode.trim()) {
+        localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
+      }
       await signIn(email, password);
       toast({
         title: "Welcome back!",
@@ -128,10 +132,26 @@ export default function SignIn() {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
               <Link to="/forgot-password" className="text-sm text-primary hover:underline">
                 Forgot password?
               </Link>
+            </div>
+
+            {/* Referral Code */}
+            <div className="space-y-2">
+              <Label htmlFor="referral" className="flex items-center gap-1.5 text-xs">
+                <Gift className="h-3.5 w-3.5 text-primary" /> Referral Code (optional)
+              </Label>
+              <Input
+                id="referral"
+                type="text"
+                placeholder="e.g. AB12"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                maxLength={4}
+                className="font-mono tracking-widest uppercase"
+              />
             </div>
 
             <Button type="submit" className="w-full gradient-primary border-0" disabled={isLoading}>
