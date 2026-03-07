@@ -75,7 +75,7 @@ export default function Admin() {
 
   const fetchAllData = async () => {
     try {
-      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes] = await Promise.all([
+      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes, referralsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("properties").select("*, property_images(*)").order("created_at", { ascending: false }),
         supabase.from("login_history").select("*").order("logged_in_at", { ascending: false }).limit(100),
@@ -85,6 +85,7 @@ export default function Admin() {
         supabase.from("system_settings").select("*").order("key", { ascending: true }),
         supabase.from("property_views").select("*").order("viewed_at", { ascending: false }).limit(500),
         supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("referrals").select("*").order("created_at", { ascending: false }),
       ]);
 
       setProfiles(profilesRes.data || []);
@@ -96,12 +97,15 @@ export default function Admin() {
       setSystemSettings(settingsRes.data || []);
       setPropertyViews(viewsRes.data || []);
       setMessages(messagesRes.data || []);
+      setReferrals(referralsRes.data || []);
 
       // Load coming soon settings
       const titleSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_title");
       const msgSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_message");
+      const prizeSetting = (settingsRes.data || []).find((s: any) => s.key === "referral_prize");
       if (titleSetting?.value) setComingSoonTitle(String(titleSetting.value).replace(/^"|"$/g, ''));
       if (msgSetting?.value) setComingSoonMessage(String(msgSetting.value).replace(/^"|"$/g, ''));
+      if (prizeSetting?.value) setReferralPrize(String(prizeSetting.value).replace(/^"|"$/g, ''));
     } catch (error) { console.error("Error fetching data:", error); }
   };
 
