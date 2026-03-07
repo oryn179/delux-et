@@ -45,6 +45,8 @@ export default function Admin() {
   const [banReason, setBanReason] = useState("");
   const [propertyViews, setPropertyViews] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [referralPrize, setReferralPrize] = useState("20");
   
   // Admin messaging state
   const [selectedUserForMessage, setSelectedUserForMessage] = useState<any>(null);
