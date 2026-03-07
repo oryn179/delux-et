@@ -30,7 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Track login
         if (event === "SIGNED_IN" && session?.user) {
-          // Use setTimeout to avoid blocking the auth callback
           setTimeout(async () => {
             try {
               await supabase.from("login_history").insert({
@@ -38,6 +37,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 email: session.user.email || "",
                 user_agent: navigator.userAgent,
               });
+
+              // Apply pending referral code
+              const pendingRef = localStorage.getItem("pending_referral_code");
+              if (pendingRef) {
+                localStorage.removeItem("pending_referral_code");
+                const { data: refCode } = await supabase
+                  .from("referral_codes")
+                  .select("user_id")
+                  .eq("code", pendingRef)
+                  .maybeSingle();
+                if (refCode && refCode.user_id !== session.user.id) {
+                  await supabase.from("referrals").insert({
+                    referrer_id: refCode.user_id,
+                    referred_user_id: session.user.id,
+                  }).then(() => {});
+                }
+              }
             } catch (error) {
               console.error("Failed to track login:", error);
             }
