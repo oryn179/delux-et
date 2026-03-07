@@ -21,14 +21,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
 
-        // Track login
         if (event === "SIGNED_IN" && session?.user) {
           setTimeout(async () => {
             try {
@@ -51,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   await supabase.from("referrals").insert({
                     referrer_id: refCode.user_id,
                     referred_user_id: session.user.id,
-                  }).then(() => {});
+                  });
                 }
               }
             } catch (error) {
@@ -62,7 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -85,19 +82,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-      },
+      options: { redirectTo: window.location.origin },
     });
     if (error) throw error;
   };
@@ -109,16 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        session,
-        isAuthenticated: !!user,
-        isLoading,
-        signUp,
-        signIn,
-        signInWithGoogle,
-        signOut,
-      }}
+      value={{ user, session, isAuthenticated: !!user, isLoading, signUp, signIn, signInWithGoogle, signOut }}
     >
       {children}
     </AuthContext.Provider>
