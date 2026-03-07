@@ -14,6 +14,7 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
 
   const { signIn, signInWithGoogle } = useAuth();
   const { toast } = useToast();
