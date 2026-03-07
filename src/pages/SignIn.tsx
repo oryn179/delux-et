@@ -132,10 +132,26 @@ export default function SignIn() {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
               <Link to="/forgot-password" className="text-sm text-primary hover:underline">
                 Forgot password?
               </Link>
+            </div>
+
+            {/* Referral Code */}
+            <div className="space-y-2">
+              <Label htmlFor="referral" className="flex items-center gap-1.5 text-xs">
+                <Gift className="h-3.5 w-3.5 text-primary" /> Referral Code (optional)
+              </Label>
+              <Input
+                id="referral"
+                type="text"
+                placeholder="e.g. AB12"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                maxLength={4}
+                className="font-mono tracking-widest uppercase"
+              />
             </div>
 
             <Button type="submit" className="w-full gradient-primary border-0" disabled={isLoading}>
