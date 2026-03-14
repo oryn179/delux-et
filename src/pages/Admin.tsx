@@ -104,6 +104,7 @@ export default function Admin() {
       setPropertyViews(viewsRes.data || []);
       setMessages(messagesRes.data || []);
       setReferrals(referralsRes.data || []);
+      setOwnerRequests(ownerReqRes.data || []);
 
       // Load coming soon settings
       const titleSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_title");
