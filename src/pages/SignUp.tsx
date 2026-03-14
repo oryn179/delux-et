@@ -7,32 +7,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useApplyReferralCode } from "@/hooks/useReferral";
 import { lovable } from "@/integrations/lovable";
+import { UserTypeToggle } from "@/components/UserTypeToggle";
 import deluxLogo from "@/assets/delux-logo.png";
 
 export default function SignUp() {
   const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [referralCode, setReferralCode] = useState(searchParams.get("ref") || "");
   const [isLoading, setIsLoading] = useState(false);
+  const [userType, setUserType] = useState<"seeker" | "owner">("seeker");
+  const [ownerPhone, setOwnerPhone] = useState("");
 
   const { signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const applyReferral = useApplyReferralCode();
 
-  // Simple security question
   const captcha = useMemo(() => {
     const a = Math.floor(Math.random() * 10) + 1;
     const b = Math.floor(Math.random() * 10) + 1;
     return { a, b, answer: a + b };
   }, []);
   const [captchaAnswer, setCaptchaAnswer] = useState("");
+
+  const validateEthiopianPhone = (phone: string) => {
+    const cleaned = phone.replace(/[\s\-]/g, "");
+    return /^(\+251|0)(9|7)\d{8}$/.test(cleaned);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,24 +46,27 @@ export default function SignUp() {
       return;
     }
 
+    if (userType === "owner") {
+      if (!ownerPhone || !validateEthiopianPhone(ownerPhone)) {
+        toast({ title: "Invalid phone", description: "Please enter a valid Ethiopian phone number.", variant: "destructive" });
+        return;
+      }
+    }
+
     setIsLoading(true);
-
     try {
-      await signUp(email, password, { name, phone });
+      await signUp(email, password, { name, phone: userType === "owner" ? ownerPhone : undefined });
 
-      // Apply referral code after signup if provided
       if (referralCode.trim()) {
-        try {
-          // We need the user session - it'll be set by auth state change
-          // The referral will be applied after the user confirms email
-          localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
-        } catch {}
+        localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
       }
 
-      toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
-      });
+      // Store user type for post-login owner request
+      if (userType === "owner") {
+        localStorage.setItem("pending_owner_phone", ownerPhone);
+      }
+
+      toast({ title: "Account created!", description: "Please check your email to verify your account." });
       navigate("/");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to create account.";
@@ -73,6 +80,9 @@ export default function SignUp() {
     if (referralCode.trim()) {
       localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
     }
+    if (userType === "owner" && ownerPhone) {
+      localStorage.setItem("pending_owner_phone", ownerPhone);
+    }
     try {
       await signInWithGoogle();
     } catch (error: unknown) {
@@ -84,6 +94,9 @@ export default function SignUp() {
   const handleAppleSignup = async () => {
     if (referralCode.trim()) {
       localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
+    }
+    if (userType === "owner" && ownerPhone) {
+      localStorage.setItem("pending_owner_phone", ownerPhone);
     }
     try {
       const { error } = await lovable.auth.signInWithOAuth("apple", {
@@ -108,20 +121,14 @@ export default function SignUp() {
         </div>
 
         <div className="bg-card rounded-2xl p-6 md:p-8 shadow-elevated border border-border">
+          <UserTypeToggle userType={userType} onChange={setUserType} />
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input id="name" type="text" placeholder="Enter your full name" value={name} onChange={(e) => setName(e.target.value)} className="pl-10" required />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="phone" type="tel" placeholder="+251 91 234 5678" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-10" required />
               </div>
             </div>
 
@@ -144,6 +151,26 @@ export default function SignUp() {
               </div>
             </div>
 
+            {/* Phone number for Home Owners */}
+            {userType === "owner" && (
+              <div className="space-y-2 animate-fade-in">
+                <Label htmlFor="owner-phone">Phone Number (Ethiopia)</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="owner-phone"
+                    type="tel"
+                    placeholder="+251 9X XXX XXXX"
+                    value={ownerPhone}
+                    onChange={(e) => setOwnerPhone(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Only Ethiopian numbers (+251). Required for approval.</p>
+              </div>
+            )}
+
             {/* Referral Code */}
             <div className="space-y-2">
               <Label htmlFor="referral" className="flex items-center gap-1.5">
@@ -162,9 +189,7 @@ export default function SignUp() {
 
             {/* Security Question */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-xs">
-                🛡️ Verify you're human
-              </Label>
+              <Label className="flex items-center gap-1.5 text-xs">🛡️ Verify you're human</Label>
               <div className="flex items-center gap-3">
                 <div className="px-3 py-2 rounded-lg bg-secondary font-mono font-bold text-sm">
                   {captcha.a} + {captcha.b} = ?
