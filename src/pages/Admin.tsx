@@ -929,6 +929,107 @@ export default function Admin() {
                 </div>
               </div>
             </TabsContent>
+
+            {/* Owner Requests Tab */}
+            <TabsContent value="owners">
+              <div className="bg-card rounded-2xl p-6 shadow-card border border-border space-y-6">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-primary" /> Home Owner Requests
+                </h2>
+
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ownerRequests.map((req: any) => {
+                        const profile = getProfileByUserId(req.user_id);
+                        return (
+                          <TableRow key={req.id} className={req.status === "banned" ? "bg-destructive/10" : ""}>
+                            <TableCell className="font-medium">{profile?.name || req.user_id.slice(0, 8)}</TableCell>
+                            <TableCell>{req.phone}</TableCell>
+                            <TableCell>
+                              {req.status === "approved" && <Badge className="bg-primary/10 text-primary">Approved</Badge>}
+                              {req.status === "pending" && <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>}
+                              {req.status === "banned" && <Badge variant="destructive">Banned</Badge>}
+                            </TableCell>
+                            <TableCell className="text-sm">{format(new Date(req.created_at), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 flex-wrap">
+                                {req.status === "pending" && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-1"
+                                      onClick={async () => {
+                                        await supabase.from("owner_requests").update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
+                                        await logAdminAction("approve_owner", "owner_request", req.id, { user_id: req.user_id });
+                                        // Also verify the profile
+                                        await supabase.from("profiles").update({ verified: true }).eq("user_id", req.user_id);
+                                        toast({ title: "Owner approved", description: `${profile?.name || "User"} can now post listings.` });
+                                        fetchAllData();
+                                      }}
+                                    >
+                                      <CheckCircle className="h-3 w-3" /> Approve
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="gap-1 text-destructive">
+                                          <Ban className="h-3 w-3" /> Ban
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Ban Owner Request</AlertDialogTitle>
+                                          <AlertDialogDescription>This will permanently deny this user from posting listings.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <div className="space-y-2">
+                                          <Label>Reason (optional)</Label>
+                                          <Input value={ownerNote} onChange={(e) => setOwnerNote(e.target.value)} placeholder="Reason for banning..." />
+                                        </div>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            className="bg-destructive text-destructive-foreground"
+                                            onClick={async () => {
+                                              await supabase.from("owner_requests").update({ status: "banned", admin_note: ownerNote || null, reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
+                                              await logAdminAction("ban_owner", "owner_request", req.id, { user_id: req.user_id, reason: ownerNote });
+                                              toast({ title: "Request banned" });
+                                              setOwnerNote("");
+                                              fetchAllData();
+                                            }}
+                                          >
+                                            Ban
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>
+                                )}
+                                {req.status === "approved" && (
+                                  <Badge className="bg-primary/10 text-primary">Active</Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {ownerRequests.length === 0 && (
+                        <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No owner requests yet</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </main>
