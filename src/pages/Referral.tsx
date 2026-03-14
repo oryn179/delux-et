@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Copy, Check, Share2, Users, Gift, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReferralCode, useReferralStats } from "@/hooks/useReferral";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Referral() {
   const navigate = useNavigate();
@@ -16,6 +17,22 @@ export default function Referral() {
   const { data: referralCode, isLoading } = useReferralCode(user?.id);
   const { data: stats } = useReferralStats(user?.id);
   const [copied, setCopied] = useState(false);
+  const [prizeAmount, setPrizeAmount] = useState(20);
+
+  // Load dynamic prize from system settings
+  useEffect(() => {
+    supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "referral_prize")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) {
+          const val = parseInt(String(data.value).replace(/"/g, ""), 10);
+          if (!isNaN(val)) setPrizeAmount(val);
+        }
+      });
+  }, []);
 
   const referralLink = referralCode
     ? `${window.location.origin}/signup?ref=${referralCode}`
@@ -74,7 +91,7 @@ export default function Referral() {
             </div>
             <h1 className="text-3xl font-display font-bold mb-2">Invite & Earn</h1>
             <p className="text-muted-foreground">
-              Share your code and earn <strong className="text-primary">20 ETB</strong> for every friend who joins!
+              Share your code and earn <strong className="text-primary">{prizeAmount} ETB</strong> for every friend who joins!
             </p>
           </div>
 
@@ -88,12 +105,7 @@ export default function Referral() {
                 <div className="flex-1 bg-secondary rounded-xl px-4 py-3 font-mono text-2xl font-bold tracking-[0.3em] text-center">
                   {referralCode}
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 rounded-xl"
-                  onClick={() => handleCopy(referralCode || "")}
-                >
+                <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl" onClick={() => handleCopy(referralCode || "")}>
                   {copied ? <Check className="h-5 w-5 text-primary" /> : <Copy className="h-5 w-5" />}
                 </Button>
               </div>
@@ -123,7 +135,7 @@ export default function Referral() {
             </div>
             <div className="bg-card rounded-2xl p-5 shadow-card border border-border text-center">
               <Gift className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">{(stats?.credited || 0) * 20} ETB</p>
+              <p className="text-2xl font-bold">{(stats?.credited || 0) * prizeAmount} ETB</p>
               <p className="text-xs text-muted-foreground">Earnings</p>
             </div>
           </div>
@@ -135,7 +147,7 @@ export default function Referral() {
               {[
                 { step: "1", text: "Share your unique referral code with friends" },
                 { step: "2", text: "They sign up using your code" },
-                { step: "3", text: "You earn 20 ETB for each signup!" },
+                { step: "3", text: `You earn ${prizeAmount} ETB for each signup!` },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
