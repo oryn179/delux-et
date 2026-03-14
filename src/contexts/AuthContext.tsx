@@ -52,6 +52,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   });
                 }
               }
+
+              // Apply pending owner request
+              const pendingOwnerPhone = localStorage.getItem("pending_owner_phone");
+              if (pendingOwnerPhone) {
+                localStorage.removeItem("pending_owner_phone");
+                const { data: existing } = await supabase
+                  .from("owner_requests")
+                  .select("id")
+                  .eq("user_id", session.user.id)
+                  .maybeSingle();
+                if (!existing) {
+                  await supabase.from("owner_requests").insert({
+                    user_id: session.user.id,
+                    phone: pendingOwnerPhone,
+                  });
+                }
+              }
             } catch (error) {
               console.error("Failed to track login:", error);
             }
