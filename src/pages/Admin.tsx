@@ -61,6 +61,10 @@ export default function Admin() {
   const [comingSoonMessage, setComingSoonMessage] = useState("Mobile app, advanced filters & more features are on the way!");
   const [isSavingComingSoon, setIsSavingComingSoon] = useState(false);
 
+  // Owner requests
+  const [ownerRequests, setOwnerRequests] = useState<any[]>([]);
+  const [ownerNote, setOwnerNote] = useState("");
+
   useEffect(() => {
     checkAdminStatus();
   }, [user]);
