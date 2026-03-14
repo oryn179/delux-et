@@ -354,6 +354,7 @@ export default function Admin() {
               <TabsTrigger value="messaging" className="gap-2"><Send className="h-4 w-4" />Messaging</TabsTrigger>
               <TabsTrigger value="comingsoon" className="gap-2"><Rocket className="h-4 w-4" />Coming Soon</TabsTrigger>
               <TabsTrigger value="referrals" className="gap-2"><Gift className="h-4 w-4" />Referrals</TabsTrigger>
+              <TabsTrigger value="owners" className="gap-2"><UserCheck className="h-4 w-4" />Owners</TabsTrigger>
             </TabsList>
 
             {/* Analytics Tab */}
