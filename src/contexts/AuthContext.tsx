@@ -28,6 +28,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
 
         if (event === "SIGNED_IN" && session?.user) {
+          // Check if user is banned
+          setTimeout(async () => {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("banned, banned_reason")
+              .eq("user_id", session.user.id)
+              .maybeSingle();
+            if (profile?.banned) {
+              await supabase.auth.signOut();
+              setUser(null);
+              setSession(null);
+              alert("Your account has been banned. Reason: " + (profile.banned_reason || "Contact support."));
+              return;
+            }
+          }, 100);
           setTimeout(async () => {
             try {
               await supabase.from("login_history").insert({

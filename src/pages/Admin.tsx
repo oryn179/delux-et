@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAllOwnerRequests } from "@/hooks/useOwnerRequest";
+import { useAllSupportChats, useSendAdminReply } from "@/hooks/useSupportChat";
 import {
   Users, Home, Shield, Settings, LogIn, CheckCircle, XCircle, Trash2,
   Edit2, UserPlus, Loader2, ArrowLeft, BadgeCheck, DollarSign, Activity,
   Ban, UserX, Key, Eye, ToggleLeft, ToggleRight, Crown, AlertTriangle,
   LogOut, RefreshCw, Send, Mail, BarChart3, Rocket, Gift, Clock, UserCheck,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +26,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
+import deluxLogo from "@/assets/delux-logo.png";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
 
@@ -49,21 +52,27 @@ export default function Admin() {
   const [referrals, setReferrals] = useState<any[]>([]);
   const [referralPrize, setReferralPrize] = useState("20");
   
-  // Admin messaging state
   const [selectedUserForMessage, setSelectedUserForMessage] = useState<any>(null);
   const [messageSubject, setMessageSubject] = useState("");
   const [messageContent, setMessageContent] = useState("");
   const [sendEmailToo, setSendEmailToo] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
-  // Coming Soon editor state
   const [comingSoonTitle, setComingSoonTitle] = useState("Coming Soon");
   const [comingSoonMessage, setComingSoonMessage] = useState("Mobile app, advanced filters & more features are on the way!");
   const [isSavingComingSoon, setIsSavingComingSoon] = useState(false);
 
-  // Owner requests
   const [ownerRequests, setOwnerRequests] = useState<any[]>([]);
   const [ownerNote, setOwnerNote] = useState("");
+
+  // Support chat state
+  const { data: supportChats } = useAllSupportChats();
+  const sendAdminReply = useSendAdminReply();
+  const [selectedChatUser, setSelectedChatUser] = useState<string | null>(null);
+  const [chatReply, setChatReply] = useState("");
+
+  // External links setting
+  const [showExternalLinks, setShowExternalLinks] = useState(true);
 
   useEffect(() => {
     checkAdminStatus();
@@ -106,13 +115,14 @@ export default function Admin() {
       setReferrals(referralsRes.data || []);
       setOwnerRequests(ownerReqRes.data || []);
 
-      // Load coming soon settings
       const titleSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_title");
       const msgSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_message");
       const prizeSetting = (settingsRes.data || []).find((s: any) => s.key === "referral_prize");
+      const linksSetting = (settingsRes.data || []).find((s: any) => s.key === "show_external_links");
       if (titleSetting?.value) setComingSoonTitle(String(titleSetting.value).replace(/^"|"$/g, ''));
       if (msgSetting?.value) setComingSoonMessage(String(msgSetting.value).replace(/^"|"$/g, ''));
       if (prizeSetting?.value) setReferralPrize(String(prizeSetting.value).replace(/^"|"$/g, ''));
+      if (linksSetting) setShowExternalLinks(linksSetting.value === "true" || linksSetting.value === true);
     } catch (error) { console.error("Error fetching data:", error); }
   };
 
@@ -225,14 +235,12 @@ export default function Admin() {
   const handleSaveComingSoon = async () => {
     setIsSavingComingSoon(true);
     try {
-      // Upsert title
       const { data: existingTitle } = await supabase.from("system_settings").select("id").eq("key", "coming_soon_title").maybeSingle();
       if (existingTitle) {
         await supabase.from("system_settings").update({ value: JSON.stringify(comingSoonTitle), updated_by: user!.id, updated_at: new Date().toISOString() }).eq("id", existingTitle.id);
       } else {
         await supabase.from("system_settings").insert({ key: "coming_soon_title", value: JSON.stringify(comingSoonTitle), description: "Coming Soon widget title", updated_by: user!.id });
       }
-      // Upsert message
       const { data: existingMsg } = await supabase.from("system_settings").select("id").eq("key", "coming_soon_message").maybeSingle();
       if (existingMsg) {
         await supabase.from("system_settings").update({ value: JSON.stringify(comingSoonMessage), updated_by: user!.id, updated_at: new Date().toISOString() }).eq("id", existingMsg.id);
@@ -244,6 +252,65 @@ export default function Admin() {
       fetchAllData();
     } catch (error) { toast({ title: "Error", description: "Failed to save.", variant: "destructive" }); }
     finally { setIsSavingComingSoon(false); }
+  };
+
+  const handleToggleExternalLinks = async () => {
+    const newVal = !showExternalLinks;
+    setShowExternalLinks(newVal);
+    try {
+      const { data: existing } = await supabase.from("system_settings").select("id").eq("key", "show_external_links").maybeSingle();
+      if (existing) {
+        await supabase.from("system_settings").update({ value: newVal ? "true" : "false", updated_by: user!.id, updated_at: new Date().toISOString() }).eq("id", existing.id);
+      } else {
+        await supabase.from("system_settings").insert({ key: "show_external_links", value: newVal ? "true" : "false", description: "Show external links on property cards", updated_by: user!.id });
+      }
+      await logAdminAction("toggle_external_links", "setting", "show_external_links");
+      toast({ title: "Updated", description: `External links ${newVal ? "visible" : "hidden"}.` });
+    } catch { toast({ title: "Error", variant: "destructive" }); }
+  };
+
+  const handleApproveOwner = async (req: any) => {
+    const profile = getProfileByUserId(req.user_id);
+    await supabase.from("owner_requests").update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
+    await logAdminAction("approve_owner", "owner_request", req.id, { user_id: req.user_id });
+    await supabase.from("profiles").update({ verified: true }).eq("user_id", req.user_id);
+    // Send notification
+    await supabase.from("notifications").insert({
+      user_id: req.user_id,
+      type: "owner_approved",
+      title: "Request Approved! 🎉",
+      message: "Your Home Owner request has been approved. You can now post property listings on Delux!",
+      link: "/list-property",
+    });
+    toast({ title: "Owner approved", description: `${profile?.name || "User"} can now post listings.` });
+    fetchAllData();
+  };
+
+  const handleBanOwner = async (req: any) => {
+    await supabase.from("owner_requests").update({ status: "banned", admin_note: ownerNote || null, reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
+    await logAdminAction("ban_owner", "owner_request", req.id, { user_id: req.user_id, reason: ownerNote });
+    // Send notification
+    await supabase.from("notifications").insert({
+      user_id: req.user_id,
+      type: "owner_banned",
+      title: "Request Denied",
+      message: "Your Home Owner request has been denied. If you believe this is a mistake, please contact support.",
+      link: "/support",
+    });
+    toast({ title: "Request banned" });
+    setOwnerNote("");
+    fetchAllData();
+  };
+
+  const handleSendChatReply = async () => {
+    if (!selectedChatUser || !chatReply.trim() || !user) return;
+    try {
+      await sendAdminReply.mutateAsync({ userId: selectedChatUser, message: chatReply.trim(), adminId: user.id });
+      setChatReply("");
+      toast({ title: "Reply sent" });
+    } catch {
+      toast({ title: "Error", description: "Failed to send reply.", variant: "destructive" });
+    }
   };
 
   if (!isAuthenticated || !user) {
@@ -292,7 +359,6 @@ export default function Admin() {
 
   const getProfileByUserId = (userId: string) => profiles.find((p) => p.user_id === userId);
 
-  // Analytics data
   const verifiedUsers = profiles.filter(p => p.verified).length;
   const bannedUsers = profiles.filter(p => p.banned).length;
   const totalViews = propertyViews.length;
@@ -310,7 +376,6 @@ export default function Admin() {
     { name: "For Sale", value: properties.filter(p => p.listing_type === "sell").length },
   ].filter(d => d.value > 0);
 
-  // User registrations by month (last 6 months)
   const monthlyUsers: Record<string, number> = {};
   profiles.forEach(p => {
     const month = format(new Date(p.created_at), "MMM yyyy");
@@ -318,13 +383,15 @@ export default function Admin() {
   });
   const userGrowthData = Object.entries(monthlyUsers).slice(-6).map(([month, count]) => ({ month, users: count }));
 
-  // Views by day (last 7 days)
   const dailyViews: Record<string, number> = {};
   propertyViews.forEach(v => {
     const day = format(new Date(v.viewed_at), "MMM d");
     dailyViews[day] = (dailyViews[day] || 0) + 1;
   });
   const viewsData = Object.entries(dailyViews).slice(-7).map(([day, views]) => ({ day, views }));
+
+  // Support chat data
+  const chatUserIds = supportChats ? Object.keys(supportChats) : [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -358,6 +425,7 @@ export default function Admin() {
               <TabsTrigger value="security" className="gap-2"><Activity className="h-4 w-4" />Security</TabsTrigger>
               <TabsTrigger value="admins" className="gap-2"><Crown className="h-4 w-4" />Admins</TabsTrigger>
               <TabsTrigger value="messaging" className="gap-2"><Send className="h-4 w-4" />Messaging</TabsTrigger>
+              <TabsTrigger value="chatting" className="gap-2"><MessageCircle className="h-4 w-4" />Chatting</TabsTrigger>
               <TabsTrigger value="comingsoon" className="gap-2"><Rocket className="h-4 w-4" />Coming Soon</TabsTrigger>
               <TabsTrigger value="referrals" className="gap-2"><Gift className="h-4 w-4" />Referrals</TabsTrigger>
               <TabsTrigger value="owners" className="gap-2"><UserCheck className="h-4 w-4" />Owners</TabsTrigger>
@@ -366,7 +434,6 @@ export default function Admin() {
             {/* Analytics Tab */}
             <TabsContent value="analytics">
               <div className="space-y-6">
-                {/* Stats Cards */}
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     { label: "Total Users", value: profiles.length, icon: Users, color: "text-primary" },
@@ -398,9 +465,7 @@ export default function Admin() {
                   ))}
                 </div>
 
-                {/* Charts */}
                 <div className="grid lg:grid-cols-2 gap-6">
-                  {/* Property Type Distribution */}
                   <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
                     <h3 className="font-semibold mb-4">Property Types</h3>
                     {propertyTypeData.length > 0 ? (
@@ -417,7 +482,6 @@ export default function Admin() {
                     ) : <p className="text-center text-muted-foreground py-8">No data</p>}
                   </div>
 
-                  {/* Listing Type */}
                   <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
                     <h3 className="font-semibold mb-4">Listing Types</h3>
                     {listingTypeData.length > 0 ? (
@@ -433,7 +497,6 @@ export default function Admin() {
                     ) : <p className="text-center text-muted-foreground py-8">No data</p>}
                   </div>
 
-                  {/* User Growth */}
                   <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
                     <h3 className="font-semibold mb-4">User Registrations</h3>
                     {userGrowthData.length > 0 ? (
@@ -449,7 +512,6 @@ export default function Admin() {
                     ) : <p className="text-center text-muted-foreground py-8">No data</p>}
                   </div>
 
-                  {/* Daily Views */}
                   <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
                     <h3 className="font-semibold mb-4">Daily Property Views</h3>
                     {viewsData.length > 0 ? (
@@ -637,7 +699,7 @@ export default function Admin() {
 
             {/* Settings Tab */}
             <TabsContent value="settings">
-              <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
+              <div className="bg-card rounded-2xl p-6 shadow-card border border-border space-y-6">
                 <h2 className="text-lg font-semibold mb-4">System Settings</h2>
                 <div className="space-y-4">
                   {systemSettings.filter(s => !s.key.startsWith("coming_soon")).map((setting) => (
@@ -649,6 +711,15 @@ export default function Admin() {
                       <Switch checked={setting.value === "true"} onCheckedChange={() => handleToggleSetting(setting)} />
                     </div>
                   ))}
+                </div>
+
+                {/* External Links Toggle */}
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Show External Links</p>
+                    <p className="text-sm text-muted-foreground">Toggle external links on property cards</p>
+                  </div>
+                  <Switch checked={showExternalLinks} onCheckedChange={handleToggleExternalLinks} />
                 </div>
               </div>
             </TabsContent>
@@ -797,13 +868,95 @@ export default function Admin() {
               </div>
             </TabsContent>
 
+            {/* Chatting Tab (Support) */}
+            <TabsContent value="chatting">
+              <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5 text-primary" /> Support Chats
+                  </h2>
+                </div>
+                <div className="grid md:grid-cols-3" style={{ height: "500px" }}>
+                  {/* User list */}
+                  <div className="border-r border-border overflow-y-auto">
+                    {chatUserIds.length > 0 ? chatUserIds.map((userId) => {
+                      const profile = getProfileByUserId(userId);
+                      const msgs = supportChats?.[userId] || [];
+                      const lastMsg = msgs[msgs.length - 1];
+                      return (
+                        <div
+                          key={userId}
+                          className={`p-3 border-b cursor-pointer transition-colors hover:bg-secondary/50 ${selectedChatUser === userId ? "bg-primary/10" : ""}`}
+                          onClick={() => setSelectedChatUser(userId)}
+                        >
+                          <p className="font-medium text-sm">{profile?.name || userId.slice(0, 8)}</p>
+                          <p className="text-xs text-muted-foreground truncate">{lastMsg?.message || ""}</p>
+                          {lastMsg && <p className="text-[10px] text-muted-foreground">{format(new Date(lastMsg.created_at), "MMM d, h:mm a")}</p>}
+                        </div>
+                      );
+                    }) : (
+                      <div className="p-8 text-center text-muted-foreground text-sm">No support chats yet</div>
+                    )}
+                  </div>
+
+                  {/* Chat area */}
+                  <div className="md:col-span-2 flex flex-col">
+                    {selectedChatUser ? (
+                      <>
+                        <div className="p-3 border-b border-border bg-secondary/30">
+                          <p className="font-semibold text-sm flex items-center gap-2">
+                            <img src={deluxLogo} alt="Delux" className="h-6 w-6 rounded-full" />
+                            Chat with {getProfileByUserId(selectedChatUser)?.name || "User"}
+                          </p>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                          {(supportChats?.[selectedChatUser] || []).map((msg) => (
+                            <div key={msg.id} className={`flex ${msg.is_admin_reply ? "justify-end" : "justify-start"}`}>
+                              <div className={`rounded-xl px-3 py-2 max-w-[70%] text-sm ${
+                                msg.is_admin_reply
+                                  ? "gradient-primary text-primary-foreground"
+                                  : "bg-secondary"
+                              }`}>
+                                <p>{msg.message}</p>
+                                <p className={`text-[10px] mt-0.5 ${msg.is_admin_reply ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                  {format(new Date(msg.created_at), "h:mm a")}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-3 border-t border-border flex gap-2">
+                          <Input
+                            value={chatReply}
+                            onChange={(e) => setChatReply(e.target.value)}
+                            placeholder="Type reply..."
+                            onKeyDown={(e) => e.key === "Enter" && handleSendChatReply()}
+                          />
+                          <Button size="icon" className="gradient-primary border-0 shrink-0" onClick={handleSendChatReply} disabled={!chatReply.trim() || sendAdminReply.isPending}>
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                        <div className="text-center">
+                          <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                          <p>Select a chat to reply</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
             {/* Coming Soon Tab */}
             <TabsContent value="comingsoon">
               <div className="bg-card rounded-2xl p-6 shadow-card border border-border max-w-2xl">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <Rocket className="h-5 w-5" /> Edit Coming Soon Widget
                 </h2>
-                <p className="text-muted-foreground text-sm mb-6">Edit the content shown in the floating "Coming Soon" widget on the bottom-left of every page.</p>
+                <p className="text-muted-foreground text-sm mb-6">Edit the content shown in the floating "Coming Soon" widget.</p>
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -815,7 +968,6 @@ export default function Admin() {
                     <Textarea value={comingSoonMessage} onChange={(e) => setComingSoonMessage(e.target.value)} placeholder="Description text..." rows={3} />
                   </div>
 
-                  {/* Preview */}
                   <div className="border rounded-xl p-4">
                     <p className="text-xs text-muted-foreground mb-2">Preview:</p>
                     <div className="bg-card border border-border rounded-xl shadow-lg p-4 max-w-[200px]">
@@ -843,7 +995,6 @@ export default function Admin() {
                   <Gift className="h-5 w-5 text-primary" /> Referral Management
                 </h2>
 
-                {/* Prize Setting */}
                 <div className="space-y-2">
                   <Label>Referral Prize (ETB per signup)</Label>
                   <div className="flex gap-2 max-w-xs">
@@ -871,7 +1022,6 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* Referrals Table */}
                 <div>
                   <h3 className="font-medium mb-2">All Referrals ({referrals.length})</h3>
                   <div className="overflow-x-auto">
@@ -969,14 +1119,7 @@ export default function Admin() {
                                       variant="outline"
                                       size="sm"
                                       className="gap-1"
-                                      onClick={async () => {
-                                        await supabase.from("owner_requests").update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
-                                        await logAdminAction("approve_owner", "owner_request", req.id, { user_id: req.user_id });
-                                        // Also verify the profile
-                                        await supabase.from("profiles").update({ verified: true }).eq("user_id", req.user_id);
-                                        toast({ title: "Owner approved", description: `${profile?.name || "User"} can now post listings.` });
-                                        fetchAllData();
-                                      }}
+                                      onClick={() => handleApproveOwner(req)}
                                     >
                                       <CheckCircle className="h-3 w-3" /> Approve
                                     </Button>
@@ -999,13 +1142,7 @@ export default function Admin() {
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                                           <AlertDialogAction
                                             className="bg-destructive text-destructive-foreground"
-                                            onClick={async () => {
-                                              await supabase.from("owner_requests").update({ status: "banned", admin_note: ownerNote || null, reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
-                                              await logAdminAction("ban_owner", "owner_request", req.id, { user_id: req.user_id, reason: ownerNote });
-                                              toast({ title: "Request banned" });
-                                              setOwnerNote("");
-                                              fetchAllData();
-                                            }}
+                                            onClick={() => handleBanOwner(req)}
                                           >
                                             Ban
                                           </AlertDialogAction>
