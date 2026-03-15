@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { lovable } from "@/integrations/lovable";
 import { UserTypeToggle } from "@/components/UserTypeToggle";
+import { supabase } from "@/integrations/supabase/client";
 import deluxLogo from "@/assets/delux-logo.png";
 
 export default function SignUp() {
@@ -21,6 +22,7 @@ export default function SignUp() {
   const [isLoading, setIsLoading] = useState(false);
   const [userType, setUserType] = useState<"seeker" | "owner">("seeker");
   const [ownerPhone, setOwnerPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   const { signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
@@ -38,8 +40,19 @@ export default function SignUp() {
     return /^(\+251|0)(9|7)\d{8}$/.test(cleaned);
   };
 
+  const checkPhoneUniqueness = async (phone: string): Promise<boolean> => {
+    const cleaned = phone.replace(/[\s\-]/g, "");
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("phone", cleaned)
+      .maybeSingle();
+    return !data;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPhoneError("");
 
     if (parseInt(captchaAnswer) !== captcha.answer) {
       toast({ title: "Wrong answer", description: "Please solve the math problem correctly.", variant: "destructive" });
@@ -49,6 +62,12 @@ export default function SignUp() {
     if (userType === "owner") {
       if (!ownerPhone || !validateEthiopianPhone(ownerPhone)) {
         toast({ title: "Invalid phone", description: "Please enter a valid Ethiopian phone number.", variant: "destructive" });
+        return;
+      }
+      const isUnique = await checkPhoneUniqueness(ownerPhone);
+      if (!isUnique) {
+        setPhoneError("This phone number is already registered.");
+        toast({ title: "Phone already used", description: "This phone number is already registered by another user.", variant: "destructive" });
         return;
       }
     }
@@ -61,7 +80,6 @@ export default function SignUp() {
         localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
       }
 
-      // Store user type for post-login owner request
       if (userType === "owner") {
         localStorage.setItem("pending_owner_phone", ownerPhone);
       }
@@ -151,7 +169,6 @@ export default function SignUp() {
               </div>
             </div>
 
-            {/* Phone number for Home Owners */}
             {userType === "owner" && (
               <div className="space-y-2 animate-fade-in">
                 <Label htmlFor="owner-phone">Phone Number (Ethiopia)</Label>
@@ -162,16 +179,16 @@ export default function SignUp() {
                     type="tel"
                     placeholder="+251 9X XXX XXXX"
                     value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(e.target.value)}
-                    className="pl-10"
+                    onChange={(e) => { setOwnerPhone(e.target.value); setPhoneError(""); }}
+                    className={`pl-10 ${phoneError ? "border-destructive" : ""}`}
                     required
                   />
                 </div>
+                {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
                 <p className="text-xs text-muted-foreground">Only Ethiopian numbers (+251). Required for approval.</p>
               </div>
             )}
 
-            {/* Referral Code */}
             <div className="space-y-2">
               <Label htmlFor="referral" className="flex items-center gap-1.5">
                 <Gift className="h-3.5 w-3.5 text-primary" /> Referral Code (optional)
@@ -187,7 +204,6 @@ export default function SignUp() {
               />
             </div>
 
-            {/* Security Question */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5 text-xs">🛡️ Verify you're human</Label>
               <div className="flex items-center gap-3">

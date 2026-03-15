@@ -24,7 +24,6 @@ export default function Profile() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Sync form state when profile loads
   if (profile && !isEditing && name === "" && phone === "") {
     setName(profile.name);
     setPhone(profile.phone || "");
@@ -235,15 +234,13 @@ export default function Profile() {
               <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
                 <h3 className="text-lg font-semibold mb-4">Account</h3>
                 <div className="space-y-2">
-                  <Button variant="ghost" className="w-full justify-start gap-2">
+                  <Button variant="ghost" className="w-full justify-start gap-2" onClick={() => navigate("/referral")}>
                     <Settings className="h-4 w-4" />
-                    Settings
-                    <span className="ml-auto text-xs text-muted-foreground">Coming Soon</span>
+                    Referral & Settings
                   </Button>
-                  <Button variant="ghost" className="w-full justify-start gap-2">
+                  <Button variant="ghost" className="w-full justify-start gap-2" onClick={() => navigate("/support")}>
                     <HelpCircle className="h-4 w-4" />
-                    Support
-                    <span className="ml-auto text-xs text-muted-foreground">Coming Soon</span>
+                    Support Chat
                   </Button>
                   <Button
                     variant="ghost"
