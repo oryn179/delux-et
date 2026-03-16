@@ -338,6 +338,29 @@ export default function Admin() {
     }
   };
 
+  const handleApproveListing = async (property: any) => {
+    await (supabase as any).from("properties").update({ listing_status: "approved", listing_reviewed_at: new Date().toISOString(), listing_reviewed_by: user!.id }).eq("id", property.id);
+    await logAdminAction("approve_listing", "property", property.id, { title: property.title });
+    await supabase.from("notifications").insert({
+      user_id: property.user_id, type: "listing_approved", title: "Listing Approved! 🎉",
+      message: `Your listing "${property.title}" has been approved and is now visible to everyone.`,
+      link: `/property/${property.id}`,
+    });
+    toast({ title: "Listing approved", description: `"${property.title}" is now live.` });
+    fetchAllData();
+  };
+
+  const handleRejectListing = async (property: any) => {
+    await (supabase as any).from("properties").update({ listing_status: "rejected", listing_admin_note: listingNote || null, listing_reviewed_at: new Date().toISOString(), listing_reviewed_by: user!.id }).eq("id", property.id);
+    await logAdminAction("reject_listing", "property", property.id, { title: property.title, reason: listingNote });
+    await supabase.from("notifications").insert({
+      user_id: property.user_id, type: "listing_rejected", title: "Listing Not Approved",
+      message: `Your listing "${property.title}" was not approved.${listingNote ? " Reason: " + listingNote : ""} Please contact support.`,
+      link: "/support",
+    });
+    toast({ title: "Listing rejected" }); setListingNote(""); fetchAllData();
+  };
+
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen flex flex-col">
