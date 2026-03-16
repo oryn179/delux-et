@@ -129,6 +129,7 @@ export default function Admin() {
 
       setProfiles(profilesRes.data || []);
       setProperties(propertiesRes.data || []);
+      setPendingListings((propertiesRes.data || []).filter((p: any) => p.listing_status === "pending"));
       setLoginHistory(loginRes.data || []);
       setAdminRoles(rolesRes.data || []);
       setActivityLogs(logsRes.data || []);
