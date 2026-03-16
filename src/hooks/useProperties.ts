@@ -31,6 +31,7 @@ export function useProperties(filters?: SearchFilters) {
           property_images(*)
         `)
         .eq("is_available", true)
+        .or("listing_status.eq.approved,listing_status.is.null")
         .order("created_at", { ascending: false });
 
       if (filters?.propertyType && filters.propertyType !== "Property Type") {

@@ -74,6 +74,30 @@ export default function Admin() {
   // External links setting
   const [showExternalLinks, setShowExternalLinks] = useState(true);
 
+  // Pending listings state
+  const [pendingListings, setPendingListings] = useState<any[]>([]);
+  const [listingNote, setListingNote] = useState("");
+
+  // Support chat notification sound
+  const [prevChatCount, setPrevChatCount] = useState<number>(0);
+  const unreadSupportCount = supportChats
+    ? Object.values(supportChats).reduce((acc, msgs) => {
+        const lastMsg = msgs[msgs.length - 1];
+        return acc + (lastMsg && !lastMsg.is_admin_reply ? 1 : 0);
+      }, 0)
+    : 0;
+
+  useEffect(() => {
+    if (unreadSupportCount > prevChatCount && prevChatCount > 0) {
+      try {
+        const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczIj2markup");
+        audio.volume = 0.3;
+        audio.play().catch(() => {});
+      } catch {}
+    }
+    setPrevChatCount(unreadSupportCount);
+  }, [unreadSupportCount]);
+
   useEffect(() => {
     checkAdminStatus();
   }, [user]);
@@ -105,6 +129,7 @@ export default function Admin() {
 
       setProfiles(profilesRes.data || []);
       setProperties(propertiesRes.data || []);
+      setPendingListings((propertiesRes.data || []).filter((p: any) => p.listing_status === "pending"));
       setLoginHistory(loginRes.data || []);
       setAdminRoles(rolesRes.data || []);
       setActivityLogs(logsRes.data || []);
@@ -313,6 +338,29 @@ export default function Admin() {
     }
   };
 
+  const handleApproveListing = async (property: any) => {
+    await (supabase as any).from("properties").update({ listing_status: "approved", listing_reviewed_at: new Date().toISOString(), listing_reviewed_by: user!.id }).eq("id", property.id);
+    await logAdminAction("approve_listing", "property", property.id, { title: property.title });
+    await supabase.from("notifications").insert({
+      user_id: property.user_id, type: "listing_approved", title: "Listing Approved! 🎉",
+      message: `Your listing "${property.title}" has been approved and is now visible to everyone.`,
+      link: `/property/${property.id}`,
+    });
+    toast({ title: "Listing approved", description: `"${property.title}" is now live.` });
+    fetchAllData();
+  };
+
+  const handleRejectListing = async (property: any) => {
+    await (supabase as any).from("properties").update({ listing_status: "rejected", listing_admin_note: listingNote || null, listing_reviewed_at: new Date().toISOString(), listing_reviewed_by: user!.id }).eq("id", property.id);
+    await logAdminAction("reject_listing", "property", property.id, { title: property.title, reason: listingNote });
+    await supabase.from("notifications").insert({
+      user_id: property.user_id, type: "listing_rejected", title: "Listing Not Approved",
+      message: `Your listing "${property.title}" was not approved.${listingNote ? " Reason: " + listingNote : ""} Please contact support.`,
+      link: "/support",
+    });
+    toast({ title: "Listing rejected" }); setListingNote(""); fetchAllData();
+  };
+
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -425,10 +473,22 @@ export default function Admin() {
               <TabsTrigger value="security" className="gap-2"><Activity className="h-4 w-4" />Security</TabsTrigger>
               <TabsTrigger value="admins" className="gap-2"><Crown className="h-4 w-4" />Admins</TabsTrigger>
               <TabsTrigger value="messaging" className="gap-2"><Send className="h-4 w-4" />Messaging</TabsTrigger>
-              <TabsTrigger value="chatting" className="gap-2"><MessageCircle className="h-4 w-4" />Chatting</TabsTrigger>
+              <TabsTrigger value="chatting" className="gap-2 relative">
+                <MessageCircle className="h-4 w-4" />Chatting
+                {unreadSupportCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">{unreadSupportCount}</span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="comingsoon" className="gap-2"><Rocket className="h-4 w-4" />Coming Soon</TabsTrigger>
               <TabsTrigger value="referrals" className="gap-2"><Gift className="h-4 w-4" />Referrals</TabsTrigger>
-              <TabsTrigger value="owners" className="gap-2"><UserCheck className="h-4 w-4" />Owners</TabsTrigger>
+              <TabsTrigger value="owners" className="gap-2 relative">
+                <UserCheck className="h-4 w-4" />Owners
+                {(pendingListings.length > 0 || ownerRequests.filter((r: any) => r.status === "pending").length > 0) && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {pendingListings.length + ownerRequests.filter((r: any) => r.status === "pending").length}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
 
             {/* Analytics Tab */}
@@ -1161,6 +1221,88 @@ export default function Admin() {
                       })}
                       {ownerRequests.length === 0 && (
                         <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No owner requests yet</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Listing Review Section */}
+              <div className="bg-card rounded-2xl p-6 shadow-card border border-border space-y-6">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Home className="h-5 w-5 text-primary" /> Listing Review
+                  {pendingListings.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{pendingListings.length} pending</Badge>
+                  )}
+                </h2>
+
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Owner</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Area</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {properties.filter((p: any) => p.listing_status === "pending" || p.listing_status === "rejected").map((prop: any) => {
+                        const profile = getProfileByUserId(prop.user_id);
+                        return (
+                          <TableRow key={prop.id} className={prop.listing_status === "rejected" ? "bg-destructive/5" : ""}>
+                            <TableCell className="font-medium max-w-[200px] truncate">{prop.title}</TableCell>
+                            <TableCell>{profile?.name || prop.user_id.slice(0, 8)}</TableCell>
+                            <TableCell className="capitalize">{prop.property_type}</TableCell>
+                            <TableCell>{prop.area}</TableCell>
+                            <TableCell>
+                              {prop.listing_status === "pending" && <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>}
+                              {prop.listing_status === "rejected" && <Badge variant="destructive">Rejected</Badge>}
+                              {prop.listing_status === "approved" && <Badge className="bg-primary/10 text-primary">Approved</Badge>}
+                            </TableCell>
+                            <TableCell className="text-sm">{format(new Date(prop.created_at), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 flex-wrap">
+                                {prop.listing_status === "pending" && (
+                                  <>
+                                    <Button variant="outline" size="sm" className="gap-1" onClick={() => handleApproveListing(prop)}>
+                                      <CheckCircle className="h-3 w-3" /> Approve
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="gap-1 text-destructive">
+                                          <XCircle className="h-3 w-3" /> Reject
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Reject Listing</AlertDialogTitle>
+                                          <AlertDialogDescription>This listing will not be published. The owner will be notified.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <div className="space-y-2">
+                                          <Label>Reason (optional)</Label>
+                                          <Input value={listingNote} onChange={(e) => setListingNote(e.target.value)} placeholder="Reason for rejection..." />
+                                        </div>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => handleRejectListing(prop)}>
+                                            Reject
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {properties.filter((p: any) => p.listing_status === "pending" || p.listing_status === "rejected").length === 0 && (
+                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No pending listings</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
