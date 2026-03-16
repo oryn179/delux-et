@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, ShieldAlert, Clock, Ban } from "lucide-react";
+import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, ShieldAlert, Clock, Ban, ScanSearch, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,8 @@ import { useOwnerRequest } from "@/hooks/useOwnerRequest";
 import { useCreateProperty, useUploadPropertyImage, useAddPropertyImage } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
 import { addisAbabaAreas, cities } from "@/data/addisAbabaAreas";
+import { supabase } from "@/integrations/supabase/client";
+import { Progress } from "@/components/ui/progress";
 import type { Database } from "@/integrations/supabase/types";
 
 const steps = [
@@ -28,6 +30,18 @@ const propertyTypes: { value: Database["public"]["Enums"]["property_type"]; labe
   { value: "villa", label: "Villa", icon: "🏡" },
   { value: "real-estate", label: "Real Estate", icon: "🏗️" },
 ];
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function ListProperty() {
   const navigate = useNavigate();
@@ -55,6 +69,9 @@ export default function ListProperty() {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validatingImage, setValidatingImage] = useState<number | null>(null);
+  const [imageValidationStatus, setImageValidationStatus] = useState<Record<number, "checking" | "valid" | "invalid">>({});
+  const [listingSubmitted, setListingSubmitted] = useState(false);
 
   if (!isAuthenticated) {
     return (
@@ -78,7 +95,6 @@ export default function ListProperty() {
     );
   }
 
-  // Show loading while checking
   if (profileLoading || ownerLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -91,7 +107,6 @@ export default function ListProperty() {
     );
   }
 
-  // Owner request banned
   if (ownerRequest?.status === "banned") {
     return (
       <div className="min-h-screen flex flex-col">
@@ -118,7 +133,6 @@ export default function ListProperty() {
     );
   }
 
-  // Owner request pending
   if (ownerRequest?.status === "pending") {
     return (
       <div className="min-h-screen flex flex-col">
@@ -143,7 +157,6 @@ export default function ListProperty() {
     );
   }
 
-  // No owner request at all - need to submit one first
   if (!ownerRequest) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -170,8 +183,88 @@ export default function ListProperty() {
     );
   }
 
-  // Owner is approved - show the listing form
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Listing submitted - show pending review
+  if (listingSubmitted) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center gradient-hero">
+          <div className="text-center p-8 max-w-lg animate-fade-in">
+            <div className="w-24 h-24 rounded-full bg-primary/10 mx-auto mb-6 flex items-center justify-center">
+              <Clock className="h-12 w-12 text-primary animate-spin" style={{ animationDuration: "3s" }} />
+            </div>
+            <h1 className="text-2xl font-display font-bold mb-3">Listing Under Review</h1>
+            <div className="bg-card border border-border rounded-2xl p-6 mb-6 text-left space-y-3">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">Thank you for submitting your listing!</span><br />
+                  Your listing is now under review by our team to ensure it meets our quality standards.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Please allow <span className="font-semibold text-foreground">3 minutes up to 24 hours</span> for approval.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Home className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Once approved, your listing will be published and visible to everyone.
+                </p>
+              </div>
+            </div>
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
+              <p className="text-sm text-primary font-medium">🙏 We appreciate your patience and cooperation.</p>
+              <p className="text-xs text-muted-foreground mt-1">You'll receive a notification once your listing is reviewed.</p>
+            </div>
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
+              <Button onClick={() => navigate("/profile")} className="gradient-primary border-0">View My Profile</Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // AI image validation
+  const validateImage = async (file: File, index: number) => {
+    setImageValidationStatus((prev) => ({ ...prev, [index]: "checking" }));
+    setValidatingImage(index);
+    try {
+      const base64 = await fileToBase64(file);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-property-image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+      const result = await response.json();
+      setImageValidationStatus((prev) => ({ ...prev, [index]: result.valid ? "valid" : "invalid" }));
+      if (!result.valid) {
+        toast({
+          title: "Invalid Image",
+          description: result.reason || "Please upload a real property photo.",
+          variant: "destructive",
+        });
+      }
+      return result.valid;
+    } catch {
+      // On error, allow the image
+      setImageValidationStatus((prev) => ({ ...prev, [index]: "valid" }));
+      return true;
+    } finally {
+      setValidatingImage(null);
+    }
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + images.length > 5) {
       toast({ title: "Too many images", description: "Maximum 5 images allowed.", variant: "destructive" });
@@ -182,17 +275,40 @@ export default function ListProperty() {
       if (file.size > 5 * 1024 * 1024) { toast({ title: "File too large", description: `${file.name} exceeds 5MB limit.`, variant: "destructive" }); return false; }
       return true;
     });
-    setImages((prev) => [...prev, ...validFiles]);
-    validFiles.forEach((file) => {
+
+    for (const file of validFiles) {
+      const newIndex = images.length;
+      // Add preview immediately
       const reader = new FileReader();
       reader.onloadend = () => setImagePreviews((prev) => [...prev, reader.result as string]);
       reader.readAsDataURL(file);
-    });
+      setImages((prev) => [...prev, file]);
+
+      // Validate with AI
+      const isValid = await validateImage(file, newIndex);
+      if (!isValid) {
+        // Remove the invalid image after a short delay
+        setTimeout(() => {
+          setImages((prev) => prev.filter((_, i) => i !== newIndex));
+          setImagePreviews((prev) => prev.filter((_, i) => i !== newIndex));
+          setImageValidationStatus((prev) => {
+            const next = { ...prev };
+            delete next[newIndex];
+            return next;
+          });
+        }, 2000);
+      }
+    }
   };
 
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    setImageValidationStatus((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -200,6 +316,21 @@ export default function ListProperty() {
       toast({ title: "Missing information", description: "Please complete all required fields.", variant: "destructive" });
       return;
     }
+
+    // Check if any images are still being validated
+    const hasChecking = Object.values(imageValidationStatus).some((s) => s === "checking");
+    if (hasChecking) {
+      toast({ title: "Please wait", description: "Images are still being checked.", variant: "destructive" });
+      return;
+    }
+
+    // Check for invalid images
+    const hasInvalid = Object.values(imageValidationStatus).some((s) => s === "invalid");
+    if (hasInvalid) {
+      toast({ title: "Invalid images", description: "Please remove invalid images before submitting.", variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const property = await createProperty.mutateAsync({
@@ -219,8 +350,7 @@ export default function ListProperty() {
         const imageUrl = await uploadImage.mutateAsync({ file: images[i], userId: user.id });
         await addPropertyImage.mutateAsync({ propertyId: property.id, imageUrl, isPrimary: i === 0 });
       }
-      toast({ title: "Listing Created!", description: "Your property has been listed successfully." });
-      navigate("/profile");
+      setListingSubmitted(true);
     } catch (error) {
       console.error("Error creating listing:", error);
       toast({ title: "Error", description: "Failed to create listing. Please try again.", variant: "destructive" });
@@ -372,12 +502,37 @@ export default function ListProperty() {
 
             {currentStep === 4 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold">Add Photos</h2>
+                <div>
+                  <h2 className="text-xl font-semibold mb-1">Add Photos</h2>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    <ScanSearch className="h-4 w-4" />
+                    Images are verified by AI to ensure quality property photos
+                  </p>
+                </div>
                 <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-border">
                       <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                      {/* Validation overlay */}
+                      {imageValidationStatus[index] === "checking" && (
+                        <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-2">
+                          <ScanSearch className="h-6 w-6 text-primary animate-pulse" />
+                          <p className="text-xs font-medium text-primary">Checking image...</p>
+                          <Progress value={66} className="w-3/4 h-1.5" />
+                        </div>
+                      )}
+                      {imageValidationStatus[index] === "valid" && (
+                        <div className="absolute top-2 left-2 bg-primary text-primary-foreground rounded-full p-1">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                        </div>
+                      )}
+                      {imageValidationStatus[index] === "invalid" && (
+                        <div className="absolute inset-0 bg-destructive/20 flex flex-col items-center justify-center gap-1">
+                          <AlertTriangle className="h-6 w-6 text-destructive" />
+                          <p className="text-xs font-medium text-destructive">Not a property photo</p>
+                        </div>
+                      )}
                       <button onClick={() => removeImage(index)} className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
                         <X className="h-3 w-3" />
                       </button>
@@ -385,13 +540,13 @@ export default function ListProperty() {
                     </div>
                   ))}
                   {images.length < 5 && (
-                    <button onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 transition-colors">
+                    <button onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 transition-colors" disabled={validatingImage !== null}>
                       <Upload className="h-6 w-6 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">Add Photo</span>
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">Upload up to 5 images. First image will be the cover photo.</p>
+                <p className="text-xs text-muted-foreground">Upload up to 5 images. First image will be the cover photo. Each image is AI-verified (max ~5 min).</p>
               </div>
             )}
 
@@ -403,7 +558,7 @@ export default function ListProperty() {
               {currentStep < 4 ? (
                 <Button onClick={() => setCurrentStep(currentStep + 1)} disabled={!canProceed()} className="gradient-primary border-0">Next</Button>
               ) : (
-                <Button onClick={handleSubmit} disabled={isSubmitting} className="gradient-primary border-0 gap-2">
+                <Button onClick={handleSubmit} disabled={isSubmitting || validatingImage !== null} className="gradient-primary border-0 gap-2">
                   {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Creating...</> : "Create Listing"}
                 </Button>
               )}
