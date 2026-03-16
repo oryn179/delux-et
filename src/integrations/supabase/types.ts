@@ -319,6 +319,10 @@ export type Database = {
           id: string
           is_available: boolean | null
           latitude: number | null
+          listing_admin_note: string | null
+          listing_reviewed_at: string | null
+          listing_reviewed_by: string | null
+          listing_status: string
           listing_type: Database["public"]["Enums"]["listing_type"]
           longitude: number | null
           price: string | null
@@ -339,6 +343,10 @@ export type Database = {
           id?: string
           is_available?: boolean | null
           latitude?: number | null
+          listing_admin_note?: string | null
+          listing_reviewed_at?: string | null
+          listing_reviewed_by?: string | null
+          listing_status?: string
           listing_type: Database["public"]["Enums"]["listing_type"]
           longitude?: number | null
           price?: string | null
@@ -359,6 +367,10 @@ export type Database = {
           id?: string
           is_available?: boolean | null
           latitude?: number | null
+          listing_admin_note?: string | null
+          listing_reviewed_at?: string | null
+          listing_reviewed_by?: string | null
+          listing_status?: string
           listing_type?: Database["public"]["Enums"]["listing_type"]
           longitude?: number | null
           price?: string | null
@@ -515,6 +527,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      support_messages: {
+        Row: {
+          admin_id: string | null
+          created_at: string
+          id: string
+          is_admin_reply: boolean
+          message: string
+          user_id: string
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          is_admin_reply?: boolean
+          message: string
+          user_id: string
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          is_admin_reply?: boolean
+          message?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       system_settings: {
         Row: {
