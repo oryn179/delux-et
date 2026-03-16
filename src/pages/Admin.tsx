@@ -74,6 +74,30 @@ export default function Admin() {
   // External links setting
   const [showExternalLinks, setShowExternalLinks] = useState(true);
 
+  // Pending listings state
+  const [pendingListings, setPendingListings] = useState<any[]>([]);
+  const [listingNote, setListingNote] = useState("");
+
+  // Support chat notification sound
+  const [prevChatCount, setPrevChatCount] = useState<number>(0);
+  const unreadSupportCount = supportChats
+    ? Object.values(supportChats).reduce((acc, msgs) => {
+        const lastMsg = msgs[msgs.length - 1];
+        return acc + (lastMsg && !lastMsg.is_admin_reply ? 1 : 0);
+      }, 0)
+    : 0;
+
+  useEffect(() => {
+    if (unreadSupportCount > prevChatCount && prevChatCount > 0) {
+      try {
+        const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczIj2markup");
+        audio.volume = 0.3;
+        audio.play().catch(() => {});
+      } catch {}
+    }
+    setPrevChatCount(unreadSupportCount);
+  }, [unreadSupportCount]);
+
   useEffect(() => {
     checkAdminStatus();
   }, [user]);
