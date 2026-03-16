@@ -1226,6 +1226,88 @@ export default function Admin() {
                   </Table>
                 </div>
               </div>
+
+              {/* Listing Review Section */}
+              <div className="bg-card rounded-2xl p-6 shadow-card border border-border space-y-6">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Home className="h-5 w-5 text-primary" /> Listing Review
+                  {pendingListings.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{pendingListings.length} pending</Badge>
+                  )}
+                </h2>
+
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Owner</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Area</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {properties.filter((p: any) => p.listing_status === "pending" || p.listing_status === "rejected").map((prop: any) => {
+                        const profile = getProfileByUserId(prop.user_id);
+                        return (
+                          <TableRow key={prop.id} className={prop.listing_status === "rejected" ? "bg-destructive/5" : ""}>
+                            <TableCell className="font-medium max-w-[200px] truncate">{prop.title}</TableCell>
+                            <TableCell>{profile?.name || prop.user_id.slice(0, 8)}</TableCell>
+                            <TableCell className="capitalize">{prop.property_type}</TableCell>
+                            <TableCell>{prop.area}</TableCell>
+                            <TableCell>
+                              {prop.listing_status === "pending" && <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>}
+                              {prop.listing_status === "rejected" && <Badge variant="destructive">Rejected</Badge>}
+                              {prop.listing_status === "approved" && <Badge className="bg-primary/10 text-primary">Approved</Badge>}
+                            </TableCell>
+                            <TableCell className="text-sm">{format(new Date(prop.created_at), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 flex-wrap">
+                                {prop.listing_status === "pending" && (
+                                  <>
+                                    <Button variant="outline" size="sm" className="gap-1" onClick={() => handleApproveListing(prop)}>
+                                      <CheckCircle className="h-3 w-3" /> Approve
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="gap-1 text-destructive">
+                                          <XCircle className="h-3 w-3" /> Reject
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Reject Listing</AlertDialogTitle>
+                                          <AlertDialogDescription>This listing will not be published. The owner will be notified.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <div className="space-y-2">
+                                          <Label>Reason (optional)</Label>
+                                          <Input value={listingNote} onChange={(e) => setListingNote(e.target.value)} placeholder="Reason for rejection..." />
+                                        </div>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => handleRejectListing(prop)}>
+                                            Reject
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {properties.filter((p: any) => p.listing_status === "pending" || p.listing_status === "rejected").length === 0 && (
+                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No pending listings</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
