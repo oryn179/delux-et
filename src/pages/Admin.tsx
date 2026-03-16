@@ -473,10 +473,22 @@ export default function Admin() {
               <TabsTrigger value="security" className="gap-2"><Activity className="h-4 w-4" />Security</TabsTrigger>
               <TabsTrigger value="admins" className="gap-2"><Crown className="h-4 w-4" />Admins</TabsTrigger>
               <TabsTrigger value="messaging" className="gap-2"><Send className="h-4 w-4" />Messaging</TabsTrigger>
-              <TabsTrigger value="chatting" className="gap-2"><MessageCircle className="h-4 w-4" />Chatting</TabsTrigger>
+              <TabsTrigger value="chatting" className="gap-2 relative">
+                <MessageCircle className="h-4 w-4" />Chatting
+                {unreadSupportCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">{unreadSupportCount}</span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="comingsoon" className="gap-2"><Rocket className="h-4 w-4" />Coming Soon</TabsTrigger>
               <TabsTrigger value="referrals" className="gap-2"><Gift className="h-4 w-4" />Referrals</TabsTrigger>
-              <TabsTrigger value="owners" className="gap-2"><UserCheck className="h-4 w-4" />Owners</TabsTrigger>
+              <TabsTrigger value="owners" className="gap-2 relative">
+                <UserCheck className="h-4 w-4" />Owners
+                {(pendingListings.length > 0 || ownerRequests.filter((r: any) => r.status === "pending").length > 0) && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {pendingListings.length + ownerRequests.filter((r: any) => r.status === "pending").length}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
 
             {/* Analytics Tab */}
