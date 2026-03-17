@@ -1204,20 +1204,39 @@ export default function Admin() {
                                           <Ban className="h-3 w-3" /> Ban
                                         </Button>
                                       </AlertDialogTrigger>
-                                      <AlertDialogContent>
+                                       <AlertDialogContent>
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Ban Owner Request</AlertDialogTitle>
-                                          <AlertDialogDescription>This will permanently deny this user from posting listings.</AlertDialogDescription>
+                                          <AlertDialogDescription>This will permanently deny this user from posting listings. Select a reason:</AlertDialogDescription>
                                         </AlertDialogHeader>
-                                        <div className="space-y-2">
-                                          <Label>Reason (optional)</Label>
-                                          <Input value={ownerNote} onChange={(e) => setOwnerNote(e.target.value)} placeholder="Reason for banning..." />
+                                        <div className="space-y-3">
+                                          <div className="space-y-2">
+                                            {[
+                                              "Posting Not related content",
+                                              "Suspicious or fraudulent activity",
+                                              "Fake property listings",
+                                              "Inappropriate or offensive content",
+                                              "Spam or repeated violations",
+                                            ].map((reason) => (
+                                              <button
+                                                key={reason}
+                                                className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ${ownerNote === reason ? "border-destructive bg-destructive/10 text-destructive" : "border-border hover:border-destructive/50"}`}
+                                                onClick={() => setOwnerNote(reason)}
+                                              >
+                                                {reason}
+                                              </button>
+                                            ))}
+                                          </div>
+                                          <div className="space-y-1">
+                                            <Label className="text-xs">Or custom reason:</Label>
+                                            <Input value={ownerNote} onChange={(e) => setOwnerNote(e.target.value)} placeholder="Custom reason..." />
+                                          </div>
                                         </div>
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                                           <AlertDialogAction
                                             className="bg-destructive text-destructive-foreground"
-                                            onClick={() => handleBanOwner(req)}
+                                            onClick={() => handleBanOwner(req, ownerNote)}
                                           >
                                             Ban
                                           </AlertDialogAction>
