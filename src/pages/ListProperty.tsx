@@ -493,9 +493,9 @@ export default function ListProperty() {
                   <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe your property..." rows={4} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Price (ETB) - Optional</Label>
-                  <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g., 15000" />
-                  <p className="text-xs text-muted-foreground">Leave empty if you want to discuss the price with interested parties</p>
+                  <Label>Price (ETB) <span className="text-destructive">*</span></Label>
+                  <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g., 15000" required />
+                  <p className="text-xs text-muted-foreground">Enter the price in Ethiopian Birr</p>
                 </div>
               </div>
             )}
