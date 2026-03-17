@@ -344,7 +344,7 @@ export default function ListProperty() {
         listing_type: listingType,
         property_type: propertyType,
         furnished,
-        price: price || null,
+        price,
       });
       for (let i = 0; i < images.length; i++) {
         const imageUrl = await uploadImage.mutateAsync({ file: images[i], userId: user.id });

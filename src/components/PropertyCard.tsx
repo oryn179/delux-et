@@ -2,11 +2,16 @@ import { useNavigate } from "react-router-dom";
 import { Heart, Bed, Bath, MapPin, Scale, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PriceTag } from "@/components/PriceTag";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCompare } from "@/contexts/CompareContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+
+function formatPrice(price: string): string {
+  const num = parseFloat(price.replace(/,/g, ''));
+  if (isNaN(num)) return price;
+  return num.toLocaleString('en-US');
+}
 
 interface PropertyCardProps {
   id: string;
@@ -94,6 +99,14 @@ export function PropertyCard({
             <Scale className="h-4 w-4" />
           </Button>
         </div>
+        {/* Price overlay on image */}
+        {price && (
+          <div className="absolute bottom-3 left-3">
+            <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-bold text-sm shadow-lg">
+              {formatPrice(price)} ETB{type === "rent" ? "/mo" : ""}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-4 space-y-3">
@@ -116,8 +129,6 @@ export function PropertyCard({
             <span>{bathrooms} Bathrooms</span>
           </div>
         </div>
-
-        {price && <PriceTag price={price} type={type} />}
 
         {showExternalLinks && externalLink && (
           <a
