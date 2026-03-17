@@ -312,7 +312,7 @@ export default function ListProperty() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !listingType || !propertyType || !area || !bedrooms || !bathrooms || furnished === null) {
+    if (!user || !listingType || !propertyType || !area || !bedrooms || !bathrooms || furnished === null || !price) {
       toast({ title: "Missing information", description: "Please complete all required fields.", variant: "destructive" });
       return;
     }
