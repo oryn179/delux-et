@@ -359,6 +359,7 @@ export default function Admin() {
       message: `Your listing "${property.title}" has been approved and is now visible to everyone.`,
       link: `/property/${property.id}`,
     });
+    sendListingNotificationEmail(property.user_id, "listing_approved", property.title);
     toast({ title: "Listing approved", description: `"${property.title}" is now live.` });
     fetchAllData();
   };
@@ -371,6 +372,7 @@ export default function Admin() {
       message: `Your listing "${property.title}" was not approved.${listingNote ? " Reason: " + listingNote : ""} Please contact support.`,
       link: "/support",
     });
+    sendListingNotificationEmail(property.user_id, "listing_rejected", property.title, listingNote);
     toast({ title: "Listing rejected" }); setListingNote(""); fetchAllData();
   };
 
