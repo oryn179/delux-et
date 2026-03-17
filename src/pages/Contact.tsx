@@ -8,7 +8,7 @@ export default function Contact() {
   const { t } = useLanguage();
 
   const contactMethods = [
-    { icon: Phone, label: t("contact.phone"), value: "+251 91 234 5678", href: "tel:+251912345678", description: t("contact.callUs") },
+    { icon: Phone, label: t("contact.phone"), value: "+251 90 234 2307", href: "tel:+251902342307", description: t("contact.callUs") },
     { icon: Mail, label: t("contact.email"), value: "deluxethiopia@gmail.com", href: "mailto:deluxethiopia@gmail.com", description: t("contact.emailUs") },
     { icon: Send, label: t("contact.telegramContact"), value: "@Delux_ET", href: "https://t.me/Delux_ET", description: t("contact.telegramMsg") },
     { icon: Send, label: t("contact.telegramChannel"), value: "@Delux_ET1", href: "https://t.me/Delux_ET1", description: t("contact.telegramChannelMsg") },

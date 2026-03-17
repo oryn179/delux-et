@@ -294,12 +294,22 @@ export default function Admin() {
     } catch { toast({ title: "Error", variant: "destructive" }); }
   };
 
+  const sendListingNotificationEmail = async (userId: string, action: string, listingTitle?: string, reason?: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-listing-notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ userId, action, listingTitle, reason }),
+      });
+    } catch (err) { console.error("Failed to send notification email:", err); }
+  };
+
   const handleApproveOwner = async (req: any) => {
     const profile = getProfileByUserId(req.user_id);
     await supabase.from("owner_requests").update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
     await logAdminAction("approve_owner", "owner_request", req.id, { user_id: req.user_id });
     await supabase.from("profiles").update({ verified: true }).eq("user_id", req.user_id);
-    // Send notification
     await supabase.from("notifications").insert({
       user_id: req.user_id,
       type: "owner_approved",
@@ -307,21 +317,24 @@ export default function Admin() {
       message: "Your Home Owner request has been approved. You can now post property listings on Delux!",
       link: "/list-property",
     });
+    sendListingNotificationEmail(req.user_id, "owner_approved");
     toast({ title: "Owner approved", description: `${profile?.name || "User"} can now post listings.` });
     fetchAllData();
   };
 
-  const handleBanOwner = async (req: any) => {
-    await supabase.from("owner_requests").update({ status: "banned", admin_note: ownerNote || null, reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
-    await logAdminAction("ban_owner", "owner_request", req.id, { user_id: req.user_id, reason: ownerNote });
-    // Send notification
+  const handleBanOwner = async (req: any, banReasonText: string) => {
+    await supabase.from("owner_requests").update({ status: "banned", admin_note: banReasonText || null, reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
+    await logAdminAction("ban_owner", "owner_request", req.id, { user_id: req.user_id, reason: banReasonText });
     await supabase.from("notifications").insert({
       user_id: req.user_id,
       type: "owner_banned",
       title: "Request Denied",
-      message: "Your Home Owner request has been denied. If you believe this is a mistake, please contact support.",
+      message: banReasonText
+        ? `Your Home Owner request has been denied. Reason: ${banReasonText}`
+        : "Your Home Owner request has been denied. If you believe this is a mistake, please contact support.",
       link: "/support",
     });
+    sendListingNotificationEmail(req.user_id, "owner_banned", undefined, banReasonText);
     toast({ title: "Request banned" });
     setOwnerNote("");
     fetchAllData();
@@ -346,6 +359,7 @@ export default function Admin() {
       message: `Your listing "${property.title}" has been approved and is now visible to everyone.`,
       link: `/property/${property.id}`,
     });
+    sendListingNotificationEmail(property.user_id, "listing_approved", property.title);
     toast({ title: "Listing approved", description: `"${property.title}" is now live.` });
     fetchAllData();
   };
@@ -358,6 +372,7 @@ export default function Admin() {
       message: `Your listing "${property.title}" was not approved.${listingNote ? " Reason: " + listingNote : ""} Please contact support.`,
       link: "/support",
     });
+    sendListingNotificationEmail(property.user_id, "listing_rejected", property.title, listingNote);
     toast({ title: "Listing rejected" }); setListingNote(""); fetchAllData();
   };
 
@@ -1189,20 +1204,39 @@ export default function Admin() {
                                           <Ban className="h-3 w-3" /> Ban
                                         </Button>
                                       </AlertDialogTrigger>
-                                      <AlertDialogContent>
+                                       <AlertDialogContent>
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Ban Owner Request</AlertDialogTitle>
-                                          <AlertDialogDescription>This will permanently deny this user from posting listings.</AlertDialogDescription>
+                                          <AlertDialogDescription>This will permanently deny this user from posting listings. Select a reason:</AlertDialogDescription>
                                         </AlertDialogHeader>
-                                        <div className="space-y-2">
-                                          <Label>Reason (optional)</Label>
-                                          <Input value={ownerNote} onChange={(e) => setOwnerNote(e.target.value)} placeholder="Reason for banning..." />
+                                        <div className="space-y-3">
+                                          <div className="space-y-2">
+                                            {[
+                                              "Posting Not related content",
+                                              "Suspicious or fraudulent activity",
+                                              "Fake property listings",
+                                              "Inappropriate or offensive content",
+                                              "Spam or repeated violations",
+                                            ].map((reason) => (
+                                              <button
+                                                key={reason}
+                                                className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ${ownerNote === reason ? "border-destructive bg-destructive/10 text-destructive" : "border-border hover:border-destructive/50"}`}
+                                                onClick={() => setOwnerNote(reason)}
+                                              >
+                                                {reason}
+                                              </button>
+                                            ))}
+                                          </div>
+                                          <div className="space-y-1">
+                                            <Label className="text-xs">Or custom reason:</Label>
+                                            <Input value={ownerNote} onChange={(e) => setOwnerNote(e.target.value)} placeholder="Custom reason..." />
+                                          </div>
                                         </div>
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                                           <AlertDialogAction
                                             className="bg-destructive text-destructive-foreground"
-                                            onClick={() => handleBanOwner(req)}
+                                            onClick={() => handleBanOwner(req, ownerNote)}
                                           >
                                             Ban
                                           </AlertDialogAction>

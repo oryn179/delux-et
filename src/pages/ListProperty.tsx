@@ -117,12 +117,14 @@ export default function ListProperty() {
               <Ban className="h-10 w-10 text-destructive animate-pulse" />
             </div>
             <h1 className="text-2xl font-display font-bold mb-3 text-destructive">Request Denied</h1>
-            <p className="text-muted-foreground mb-6">
-              Please don't try this again, you're doing something wrong.
+            <p className="text-muted-foreground mb-4">
+              {ownerRequest?.admin_note === "Posting Not related content"
+                ? "You can use a new account by posting something unrelated to the reason you were banned, but please don't do anything like this again."
+                : "Please don't try this again, you're doing something wrong."}
             </p>
             {ownerRequest?.admin_note && (
               <p className="text-sm text-muted-foreground bg-destructive/5 rounded-xl p-4 mb-6">
-                {ownerRequest.admin_note}
+                <span className="font-medium text-destructive">Reason:</span> {ownerRequest.admin_note}
               </p>
             )}
             <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
@@ -312,7 +314,7 @@ export default function ListProperty() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !listingType || !propertyType || !area || !bedrooms || !bathrooms || furnished === null) {
+    if (!user || !listingType || !propertyType || !area || !bedrooms || !bathrooms || furnished === null || !price) {
       toast({ title: "Missing information", description: "Please complete all required fields.", variant: "destructive" });
       return;
     }
@@ -344,7 +346,7 @@ export default function ListProperty() {
         listing_type: listingType,
         property_type: propertyType,
         furnished,
-        price: price || null,
+        price,
       });
       for (let i = 0; i < images.length; i++) {
         const imageUrl = await uploadImage.mutateAsync({ file: images[i], userId: user.id });
@@ -363,7 +365,7 @@ export default function ListProperty() {
     switch (currentStep) {
       case 1: return listingType && propertyType;
       case 2: return city && area;
-      case 3: return bedrooms && bathrooms && furnished !== null;
+      case 3: return bedrooms && bathrooms && furnished !== null && price;
       case 4: return true;
       default: return false;
     }
@@ -493,9 +495,9 @@ export default function ListProperty() {
                   <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe your property..." rows={4} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Price (ETB) - Optional</Label>
-                  <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g., 15000" />
-                  <p className="text-xs text-muted-foreground">Leave empty if you want to discuss the price with interested parties</p>
+                  <Label>Price (ETB) <span className="text-destructive">*</span></Label>
+                  <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g., 15000" required />
+                  <p className="text-xs text-muted-foreground">Enter the price in Ethiopian Birr</p>
                 </div>
               </div>
             )}
