@@ -363,7 +363,7 @@ export default function ListProperty() {
     switch (currentStep) {
       case 1: return listingType && propertyType;
       case 2: return city && area;
-      case 3: return bedrooms && bathrooms && furnished !== null;
+      case 3: return bedrooms && bathrooms && furnished !== null && price;
       case 4: return true;
       default: return false;
     }
