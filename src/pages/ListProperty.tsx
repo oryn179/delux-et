@@ -117,12 +117,14 @@ export default function ListProperty() {
               <Ban className="h-10 w-10 text-destructive animate-pulse" />
             </div>
             <h1 className="text-2xl font-display font-bold mb-3 text-destructive">Request Denied</h1>
-            <p className="text-muted-foreground mb-6">
-              Please don't try this again, you're doing something wrong.
+            <p className="text-muted-foreground mb-4">
+              {ownerRequest?.admin_note === "Posting Not related content"
+                ? "You can use a new account by posting something unrelated to the reason you were banned, but please don't do anything like this again."
+                : "Please don't try this again, you're doing something wrong."}
             </p>
             {ownerRequest?.admin_note && (
               <p className="text-sm text-muted-foreground bg-destructive/5 rounded-xl p-4 mb-6">
-                {ownerRequest.admin_note}
+                <span className="font-medium text-destructive">Reason:</span> {ownerRequest.admin_note}
               </p>
             )}
             <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
