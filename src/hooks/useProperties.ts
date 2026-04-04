@@ -78,6 +78,10 @@ export function useProperties(filters?: SearchFilters) {
         query = query.lte("price", filters.maxPrice.toString());
       }
 
+      if (filters?.features && filters.features.length > 0) {
+        query = query.contains("features", filters.features);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       return data as unknown as PropertyWithImages[];

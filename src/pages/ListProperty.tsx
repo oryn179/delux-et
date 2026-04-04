@@ -1,12 +1,15 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, ShieldAlert, Clock, Ban, ScanSearch, CheckCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, ShieldAlert, Clock, Ban, ScanSearch, CheckCircle, AlertTriangle, Sparkles, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { MapLocationPicker } from "@/components/MapLocationPicker";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useOwnerRequest } from "@/hooks/useOwnerRequest";
@@ -29,6 +32,19 @@ const propertyTypes: { value: Database["public"]["Enums"]["property_type"]; labe
   { value: "house", label: "House", icon: "🏠" },
   { value: "villa", label: "Villa", icon: "🏡" },
   { value: "real-estate", label: "Real Estate", icon: "🏗️" },
+];
+
+const AMENITIES = [
+  { id: "parking", label: "Parking", icon: "🅿️" },
+  { id: "garden", label: "Garden", icon: "🌿" },
+  { id: "security", label: "Security", icon: "🔒" },
+  { id: "gym", label: "Gym", icon: "💪" },
+  { id: "pool", label: "Pool", icon: "🏊" },
+  { id: "elevator", label: "Elevator", icon: "🛗" },
+  { id: "balcony", label: "Balcony", icon: "🏞️" },
+  { id: "cctv", label: "CCTV", icon: "📹" },
+  { id: "internet", label: "Internet", icon: "📶" },
+  { id: "generator", label: "Generator", icon: "⚡" },
 ];
 
 function fileToBase64(file: File): Promise<string> {
@@ -72,6 +88,11 @@ export default function ListProperty() {
   const [validatingImage, setValidatingImage] = useState<number | null>(null);
   const [imageValidationStatus, setImageValidationStatus] = useState<Record<number, "checking" | "valid" | "invalid">>({});
   const [listingSubmitted, setListingSubmitted] = useState(false);
+  const [isLuxury, setIsLuxury] = useState(false);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [latitude, setLatitude] = useState<number | undefined>();
+  const [longitude, setLongitude] = useState<number | undefined>();
+  const [moderating, setModerating] = useState(false);
 
   if (!isAuthenticated) {
     return (
@@ -185,7 +206,6 @@ export default function ListProperty() {
     );
   }
 
-  // Listing submitted - show pending review
   if (listingSubmitted) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -201,7 +221,13 @@ export default function ListProperty() {
                 <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                 <p className="text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">Thank you for submitting your listing!</span><br />
-                  Your listing is now under review by our team to ensure it meets our quality standards.
+                  Your listing is now under review by our AI moderators and team to ensure it meets our quality standards.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">5 AI Moderators</span> are reviewing your listing for content quality and authenticity.
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -232,7 +258,6 @@ export default function ListProperty() {
     );
   }
 
-  // AI image validation
   const validateImage = async (file: File, index: number) => {
     setImageValidationStatus((prev) => ({ ...prev, [index]: "checking" }));
     setValidatingImage(index);
@@ -250,15 +275,10 @@ export default function ListProperty() {
       const result = await response.json();
       setImageValidationStatus((prev) => ({ ...prev, [index]: result.valid ? "valid" : "invalid" }));
       if (!result.valid) {
-        toast({
-          title: "Invalid Image",
-          description: result.reason || "Please upload a real property photo.",
-          variant: "destructive",
-        });
+        toast({ title: "Invalid Image", description: result.reason || "Please upload a real property photo.", variant: "destructive" });
       }
       return result.valid;
     } catch {
-      // On error, allow the image
       setImageValidationStatus((prev) => ({ ...prev, [index]: "valid" }));
       return true;
     } finally {
@@ -280,24 +300,17 @@ export default function ListProperty() {
 
     for (const file of validFiles) {
       const newIndex = images.length;
-      // Add preview immediately
       const reader = new FileReader();
       reader.onloadend = () => setImagePreviews((prev) => [...prev, reader.result as string]);
       reader.readAsDataURL(file);
       setImages((prev) => [...prev, file]);
 
-      // Validate with AI
       const isValid = await validateImage(file, newIndex);
       if (!isValid) {
-        // Remove the invalid image after a short delay
         setTimeout(() => {
           setImages((prev) => prev.filter((_, i) => i !== newIndex));
           setImagePreviews((prev) => prev.filter((_, i) => i !== newIndex));
-          setImageValidationStatus((prev) => {
-            const next = { ...prev };
-            delete next[newIndex];
-            return next;
-          });
+          setImageValidationStatus((prev) => { const next = { ...prev }; delete next[newIndex]; return next; });
         }, 2000);
       }
     }
@@ -306,11 +319,11 @@ export default function ListProperty() {
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    setImageValidationStatus((prev) => {
-      const next = { ...prev };
-      delete next[index];
-      return next;
-    });
+    setImageValidationStatus((prev) => { const next = { ...prev }; delete next[index]; return next; });
+  };
+
+  const toggleAmenity = (id: string) => {
+    setSelectedAmenities((prev) => prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]);
   };
 
   const handleSubmit = async () => {
@@ -319,14 +332,12 @@ export default function ListProperty() {
       return;
     }
 
-    // Check if any images are still being validated
     const hasChecking = Object.values(imageValidationStatus).some((s) => s === "checking");
     if (hasChecking) {
       toast({ title: "Please wait", description: "Images are still being checked.", variant: "destructive" });
       return;
     }
 
-    // Check for invalid images
     const hasInvalid = Object.values(imageValidationStatus).some((s) => s === "invalid");
     if (hasInvalid) {
       toast({ title: "Invalid images", description: "Please remove invalid images before submitting.", variant: "destructive" });
@@ -334,7 +345,38 @@ export default function ListProperty() {
     }
 
     setIsSubmitting(true);
+    setModerating(true);
+
     try {
+      // AI Moderation check
+      const { data: { session } } = await supabase.auth.getSession();
+      const modResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-listing`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          title, description, price, propertyType, listingType, area,
+          amenities: selectedAmenities,
+        }),
+      });
+      const modResult = await modResponse.json();
+      setModerating(false);
+
+      if (!modResult.approved) {
+        toast({ title: "Listing Not Approved", description: modResult.reason || "Your listing didn't pass content review.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (modResult.warnings?.length > 0) {
+        toast({ title: "Review Notice", description: modResult.warnings.join(", ") });
+      }
+
+      const features = [...selectedAmenities];
+      if (isLuxury) features.push("luxury");
+
       const property = await createProperty.mutateAsync({
         user_id: user.id,
         title: title || `${propertyType.charAt(0).toUpperCase() + propertyType.slice(1)} in ${area}`,
@@ -347,6 +389,9 @@ export default function ListProperty() {
         property_type: propertyType,
         furnished,
         price,
+        features,
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
       });
       for (let i = 0; i < images.length; i++) {
         const imageUrl = await uploadImage.mutateAsync({ file: images[i], userId: user.id });
@@ -358,6 +403,7 @@ export default function ListProperty() {
       toast({ title: "Error", description: "Failed to create listing. Please try again.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+      setModerating(false);
     }
   };
 
@@ -383,6 +429,10 @@ export default function ListProperty() {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-display font-bold mb-2">List Your Home with Delux</h1>
             <p className="text-muted-foreground">Free. Simple. Trusted in Ethiopia.</p>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <Shield className="h-4 w-4 text-primary" />
+              <p className="text-xs text-muted-foreground">Protected by 5 AI Moderators</p>
+            </div>
           </div>
 
           {/* Progress Steps */}
@@ -431,6 +481,19 @@ export default function ListProperty() {
                     ))}
                   </div>
                 </div>
+                {/* Luxury Toggle */}
+                <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-5 w-5 text-amber-500" />
+                      <div>
+                        <p className="font-semibold text-foreground">Luxury Property</p>
+                        <p className="text-xs text-muted-foreground">Mark as premium/luxury listing</p>
+                      </div>
+                    </div>
+                    <Switch checked={isLuxury} onCheckedChange={setIsLuxury} />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -452,6 +515,19 @@ export default function ListProperty() {
                       {addisAbabaAreas.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </div>
+                </div>
+                {/* Map Picker */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Pin Exact Location (Optional)
+                  </Label>
+                  <MapLocationPicker
+                    area={area}
+                    latitude={latitude}
+                    longitude={longitude}
+                    onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                  />
                 </div>
               </div>
             )}
@@ -499,6 +575,32 @@ export default function ListProperty() {
                   <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g., 15000" required />
                   <p className="text-xs text-muted-foreground">Enter the price in Ethiopian Birr</p>
                 </div>
+                {/* Amenities */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Amenities
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {AMENITIES.map((amenity) => (
+                      <button
+                        key={amenity.id}
+                        onClick={() => toggleAmenity(amenity.id)}
+                        className={`flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left text-sm ${
+                          selectedAmenities.includes(amenity.id)
+                            ? "border-primary bg-accent"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <span className="text-lg">{amenity.icon}</span>
+                        <span className="font-medium">{amenity.label}</span>
+                        {selectedAmenities.includes(amenity.id) && (
+                          <Check className="h-4 w-4 text-primary ml-auto" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -516,7 +618,6 @@ export default function ListProperty() {
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-border">
                       <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
-                      {/* Validation overlay */}
                       {imageValidationStatus[index] === "checking" && (
                         <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-2">
                           <ScanSearch className="h-6 w-6 text-primary animate-pulse" />
@@ -561,7 +662,11 @@ export default function ListProperty() {
                 <Button onClick={() => setCurrentStep(currentStep + 1)} disabled={!canProceed()} className="gradient-primary border-0">Next</Button>
               ) : (
                 <Button onClick={handleSubmit} disabled={isSubmitting || validatingImage !== null} className="gradient-primary border-0 gap-2">
-                  {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Creating...</> : "Create Listing"}
+                  {moderating ? (
+                    <><Shield className="h-4 w-4 animate-pulse" />AI Reviewing...</>
+                  ) : isSubmitting ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" />Creating...</>
+                  ) : "Create Listing"}
                 </Button>
               )}
             </div>

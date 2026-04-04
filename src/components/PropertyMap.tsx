@@ -4,12 +4,18 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Link } from "react-router-dom";
 
-// Fix default marker icon issue with Leaflet + React
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+// Custom green house icon
+const greenHouseIcon = new L.DivIcon({
+  html: `<div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#16a34a;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  </div>`,
+  className: "",
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -36],
 });
 
 // Addis Ababa area coordinates mapping
@@ -43,6 +49,7 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   listing_type: string;
+  price?: string | null;
   latitude?: number;
   longitude?: number;
 }
@@ -77,7 +84,6 @@ function MapBounds({ properties }: { properties: Property[] }) {
 }
 
 export function PropertyMap({ properties, className = "" }: PropertyMapProps) {
-  // Default center: Addis Ababa
   const center: [number, number] = [9.0192, 38.7525];
 
   return (
@@ -100,20 +106,23 @@ export function PropertyMap({ properties, className = "" }: PropertyMapProps) {
             : areaCoordinates[property.area] || center;
 
           return (
-            <Marker key={property.id} position={coords}>
+            <Marker key={property.id} position={coords} icon={greenHouseIcon}>
               <Popup>
                 <div className="p-1">
                   <h3 className="font-semibold text-sm mb-1">{property.title}</h3>
-                  <p className="text-xs text-muted-foreground mb-1">
+                  <p className="text-xs text-gray-500 mb-1">
                     {property.city}, {property.area}
                   </p>
-                  <p className="text-xs mb-2">
+                  <p className="text-xs mb-1">
                     {property.bedrooms} bed • {property.bathrooms} bath •{" "}
                     <span className="capitalize">{property.listing_type}</span>
                   </p>
+                  {property.price && (
+                    <p className="text-xs font-bold text-green-600 mb-1">{Number(property.price).toLocaleString()} ETB</p>
+                  )}
                   <Link
                     to={`/property/${property.id}`}
-                    className="text-xs text-primary hover:underline"
+                    className="text-xs text-blue-600 hover:underline"
                   >
                     View Details →
                   </Link>
