@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { useEffect, useState, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -24,6 +23,18 @@ const areaCoordinates: Record<string, [number, number]> = {
   "Mexico": [9.0100, 38.7550],
 };
 
+const pinIcon = new L.DivIcon({
+  html: `<div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#16a34a;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  </div>`,
+  className: "",
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+});
+
 interface MapLocationPickerProps {
   area?: string;
   latitude?: number;
@@ -31,17 +42,10 @@ interface MapLocationPickerProps {
   onLocationChange: (lat: number, lng: number) => void;
 }
 
-function LocationMarker({ position, onLocationChange }: { position: [number, number] | null; onLocationChange: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onLocationChange(e.latlng.lat, e.latlng.lng);
-    },
-  });
-
-  return position ? <Marker position={position} /> : null;
-}
-
 export function MapLocationPicker({ area, latitude, longitude, onLocationChange }: MapLocationPickerProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
   const [position, setPosition] = useState<[number, number] | null>(
     latitude && longitude ? [latitude, longitude] : null
   );
@@ -53,30 +57,54 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
       : [9.0192, 38.7525];
 
   useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return;
+
+    const map = L.map(mapRef.current).setView(center, 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+
+    if (position) {
+      markerRef.current = L.marker(position, { icon: pinIcon }).addTo(map);
+    }
+
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      setPosition([lat, lng]);
+      onLocationChange(lat, lng);
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      } else {
+        markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
+      }
+    });
+
+    mapInstanceRef.current = map;
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+      markerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     if (latitude && longitude) {
       setPosition([latitude, longitude]);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setView([latitude, longitude], 14);
+        if (markerRef.current) {
+          markerRef.current.setLatLng([latitude, longitude]);
+        } else {
+          markerRef.current = L.marker([latitude, longitude], { icon: pinIcon }).addTo(mapInstanceRef.current);
+        }
+      }
     }
   }, [latitude, longitude]);
 
-  const handleLocationChange = (lat: number, lng: number) => {
-    setPosition([lat, lng]);
-    onLocationChange(lat, lng);
-  };
-
   return (
     <div className="rounded-xl overflow-hidden border border-border">
-      <MapContainer
-        center={center}
-        zoom={14}
-        style={{ height: "250px", width: "100%" }}
-        scrollWheelZoom={true}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <LocationMarker position={position} onLocationChange={handleLocationChange} />
-      </MapContainer>
+      <div ref={mapRef} style={{ height: "250px", width: "100%" }} />
       <p className="text-xs text-muted-foreground p-2 bg-muted/50">
         📍 Click on the map to set exact location
         {position && <span className="ml-2 text-primary">({position[0].toFixed(4)}, {position[1].toFixed(4)})</span>}
