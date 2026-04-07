@@ -46,15 +46,35 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const onLocationChangeRef = useRef(onLocationChange);
+  onLocationChangeRef.current = onLocationChange;
+
   const [position, setPosition] = useState<[number, number] | null>(
     latitude && longitude ? [latitude, longitude] : null
   );
+  const [latInput, setLatInput] = useState(latitude?.toString() || "");
+  const [lngInput, setLngInput] = useState(longitude?.toString() || "");
 
   const center: [number, number] = latitude && longitude
     ? [latitude, longitude]
     : area && areaCoordinates[area]
       ? areaCoordinates[area]
       : [9.0192, 38.7525];
+
+  const updateMarker = (lat: number, lng: number) => {
+    setPosition([lat, lng]);
+    setLatInput(lat.toFixed(6));
+    setLngInput(lng.toFixed(6));
+    onLocationChangeRef.current(lat, lng);
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([lat, lng], mapInstanceRef.current.getZoom());
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      } else {
+        markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(mapInstanceRef.current);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -71,7 +91,9 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
     map.on("click", (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
       setPosition([lat, lng]);
-      onLocationChange(lat, lng);
+      setLatInput(lat.toFixed(6));
+      setLngInput(lng.toFixed(6));
+      onLocationChangeRef.current(lat, lng);
       if (markerRef.current) {
         markerRef.current.setLatLng([lat, lng]);
       } else {
@@ -91,6 +113,8 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
   useEffect(() => {
     if (latitude && longitude) {
       setPosition([latitude, longitude]);
+      setLatInput(latitude.toFixed(6));
+      setLngInput(longitude.toFixed(6));
       if (mapInstanceRef.current) {
         mapInstanceRef.current.setView([latitude, longitude], 14);
         if (markerRef.current) {
@@ -102,11 +126,44 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
     }
   }, [latitude, longitude]);
 
+  const handleCoordsSubmit = () => {
+    const lat = parseFloat(latInput);
+    const lng = parseFloat(lngInput);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      updateMarker(lat, lng);
+    }
+  };
+
   return (
     <div className="rounded-xl overflow-hidden border border-border">
+      <div className="flex gap-2 p-2 bg-muted/50">
+        <input
+          type="text"
+          placeholder="Latitude (e.g. 9.0192)"
+          value={latInput}
+          onChange={(e) => setLatInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleCoordsSubmit()}
+          className="flex-1 px-2 py-1.5 text-xs rounded-md border border-border bg-background"
+        />
+        <input
+          type="text"
+          placeholder="Longitude (e.g. 38.7525)"
+          value={lngInput}
+          onChange={(e) => setLngInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleCoordsSubmit()}
+          className="flex-1 px-2 py-1.5 text-xs rounded-md border border-border bg-background"
+        />
+        <button
+          type="button"
+          onClick={handleCoordsSubmit}
+          className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Go
+        </button>
+      </div>
       <div ref={mapRef} style={{ height: "250px", width: "100%" }} />
       <p className="text-xs text-muted-foreground p-2 bg-muted/50">
-        📍 Click on the map to set exact location
+        📍 Click on the map or type coordinates above to set location
         {position && <span className="ml-2 text-primary">({position[0].toFixed(4)}, {position[1].toFixed(4)})</span>}
       </p>
     </div>
