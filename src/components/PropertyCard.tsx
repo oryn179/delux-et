@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Heart, Bed, Bath, MapPin, Scale, ExternalLink } from "lucide-react";
+import { Heart, Bed, Bath, MapPin, Scale, ExternalLink, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFavorites } from "@/contexts/FavoritesContext";
@@ -25,6 +25,7 @@ interface PropertyCardProps {
   isFree?: boolean;
   externalLink?: string | null;
   showExternalLinks?: boolean;
+  features?: string[] | null;
 }
 
 export function PropertyCard({
@@ -39,7 +40,9 @@ export function PropertyCard({
   isFree = true,
   externalLink,
   showExternalLinks = true,
+  features,
 }: PropertyCardProps) {
+  const isLuxury = features?.includes("Luxury") ?? false;
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -88,6 +91,12 @@ export function PropertyCard({
       <div className="relative aspect-[4/3] overflow-hidden cursor-pointer" onClick={handleViewDetails}>
         <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         <div className="absolute top-3 left-3 flex gap-2">
+          {isLuxury && (
+            <Badge className="bg-amber-500 hover:bg-amber-600 border-0 text-white gap-1">
+              <Crown className="h-3 w-3" />
+              Luxury
+            </Badge>
+          )}
           {isFree && <Badge className="gradient-primary border-0 text-primary-foreground">Free</Badge>}
           <Badge variant="secondary" className="capitalize">{type === "rent" ? "For Rent" : "For Sale"}</Badge>
         </div>
