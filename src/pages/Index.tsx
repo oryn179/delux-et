@@ -64,6 +64,7 @@ const Index = () => {
                         bathrooms={property.bathrooms}
                         type={property.listing_type}
                         isFree={property.is_available}
+                        features={property.features}
                       />
                     );
                   })}
