@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale, Eye, X, ZoomIn } from "lucide-react";
+import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale, Eye, X, ZoomIn, Crown, Car, Trees, ShieldCheck, Dumbbell, Waves, ArrowUpFromDot, Fence, Cctv, Wifi, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
@@ -129,6 +129,12 @@ export default function PropertyDetails() {
                   <ZoomIn className="h-8 w-8 text-background opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
                 <div className="absolute top-4 left-4 flex gap-2">
+                  {property.features?.includes("Luxury") && (
+                    <Badge className="bg-amber-500 hover:bg-amber-600 border-0 text-white gap-1">
+                      <Crown className="h-3 w-3" />
+                      Luxury
+                    </Badge>
+                  )}
                   {property.is_available && (
                     <Badge className="gradient-primary border-0 text-primary-foreground">Free</Badge>
                   )}
