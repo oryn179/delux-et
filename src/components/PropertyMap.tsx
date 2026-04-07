@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Link } from "react-router-dom";
+import { createRoot } from "react-dom/client";
 
-// Custom green house icon
 const greenHouseIcon = new L.DivIcon({
   html: `<div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#16a34a;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -18,7 +17,6 @@ const greenHouseIcon = new L.DivIcon({
   popupAnchor: [0, -36],
 });
 
-// Addis Ababa area coordinates mapping
 const areaCoordinates: Record<string, [number, number]> = {
   "Bole": [8.9953, 38.7857],
   "Piassa": [9.0220, 38.7493],
@@ -59,79 +57,66 @@ interface PropertyMapProps {
   className?: string;
 }
 
-function MapBounds({ properties }: { properties: Property[] }) {
-  const map = useMap();
-  const boundsRef = useRef<boolean>(false);
+export function PropertyMap({ properties, className = "" }: PropertyMapProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
-    if (properties.length > 0 && !boundsRef.current) {
-      const coords: [number, number][] = properties.map((p) => {
-        if (p.latitude && p.longitude) {
-          return [p.latitude, p.longitude];
-        }
-        return areaCoordinates[p.area] || [9.0192, 38.7525];
-      });
+    if (!mapRef.current) return;
 
-      if (coords.length > 0) {
-        const bounds = L.latLngBounds(coords);
-        map.fitBounds(bounds, { padding: [50, 50] });
-        boundsRef.current = true;
-      }
+    // Clean up previous instance
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
     }
-  }, [properties, map]);
 
-  return null;
-}
+    const center: [number, number] = [9.0192, 38.7525];
+    const map = L.map(mapRef.current).setView(center, 12);
 
-export function PropertyMap({ properties, className = "" }: PropertyMapProps) {
-  const center: [number, number] = [9.0192, 38.7525];
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    const coords: [number, number][] = [];
+
+    properties.forEach((property) => {
+      const pos: [number, number] = property.latitude && property.longitude
+        ? [property.latitude, property.longitude]
+        : areaCoordinates[property.area] || center;
+
+      coords.push(pos);
+
+      const popupContent = `
+        <div style="padding:4px;">
+          <h3 style="font-weight:600;font-size:14px;margin-bottom:4px;">${property.title}</h3>
+          <p style="font-size:12px;color:#6b7280;margin-bottom:4px;">${property.city}, ${property.area}</p>
+          <p style="font-size:12px;margin-bottom:4px;">${property.bedrooms} bed • ${property.bathrooms} bath • <span style="text-transform:capitalize;">${property.listing_type}</span></p>
+          ${property.price ? `<p style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:4px;">${Number(property.price).toLocaleString()} ETB</p>` : ""}
+          <a href="/property/${property.id}" style="font-size:12px;color:#2563eb;text-decoration:none;">View Details →</a>
+        </div>
+      `;
+
+      L.marker(pos, { icon: greenHouseIcon })
+        .addTo(map)
+        .bindPopup(popupContent);
+    });
+
+    if (coords.length > 0) {
+      const bounds = L.latLngBounds(coords);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+
+    mapInstanceRef.current = map;
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, [properties]);
 
   return (
     <div className={`rounded-xl overflow-hidden border border-border ${className}`}>
-      <MapContainer
-        center={center}
-        zoom={12}
-        style={{ height: "100%", width: "100%", minHeight: "400px" }}
-        scrollWheelZoom={true}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapBounds properties={properties} />
-        
-        {properties.map((property) => {
-          const coords: [number, number] = property.latitude && property.longitude
-            ? [property.latitude, property.longitude]
-            : areaCoordinates[property.area] || center;
-
-          return (
-            <Marker key={property.id} position={coords} icon={greenHouseIcon}>
-              <Popup>
-                <div className="p-1">
-                  <h3 className="font-semibold text-sm mb-1">{property.title}</h3>
-                  <p className="text-xs text-gray-500 mb-1">
-                    {property.city}, {property.area}
-                  </p>
-                  <p className="text-xs mb-1">
-                    {property.bedrooms} bed • {property.bathrooms} bath •{" "}
-                    <span className="capitalize">{property.listing_type}</span>
-                  </p>
-                  {property.price && (
-                    <p className="text-xs font-bold text-green-600 mb-1">{Number(property.price).toLocaleString()} ETB</p>
-                  )}
-                  <Link
-                    to={`/property/${property.id}`}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    View Details →
-                  </Link>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
+      <div ref={mapRef} style={{ height: "100%", width: "100%", minHeight: "400px" }} />
     </div>
   );
 }
