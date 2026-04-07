@@ -80,6 +80,7 @@ export default function Favorites() {
                     bathrooms={property.bathrooms}
                     type={property.listing_type}
                     isFree={property.is_available}
+                    features={property.features as string[] | null}
                   />
                 );
               })}

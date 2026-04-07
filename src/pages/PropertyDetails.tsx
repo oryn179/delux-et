@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale, Eye, X, ZoomIn } from "lucide-react";
+import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale, Eye, X, ZoomIn, Crown, Car, Trees, ShieldCheck, Dumbbell, Waves, ArrowUpFromDot, Fence, Cctv, Wifi, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
@@ -129,6 +129,12 @@ export default function PropertyDetails() {
                   <ZoomIn className="h-8 w-8 text-background opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
                 <div className="absolute top-4 left-4 flex gap-2">
+                  {property.features?.includes("Luxury") && (
+                    <Badge className="bg-amber-500 hover:bg-amber-600 border-0 text-white gap-1">
+                      <Crown className="h-3 w-3" />
+                      Luxury
+                    </Badge>
+                  )}
                   {property.is_available && (
                     <Badge className="gradient-primary border-0 text-primary-foreground">Free</Badge>
                   )}
@@ -186,22 +192,38 @@ export default function PropertyDetails() {
                 </p>
               </div>
 
-              {/* Features */}
-              {property.features && property.features.length > 0 && (
-                <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
-                  <h2 className="text-xl font-semibold mb-4">Features</h2>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {property.features.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
-                          <Check className="h-3 w-3 text-primary" />
+              {/* Amenities & Features */}
+              {property.features && property.features.length > 0 && (() => {
+                const amenityIcons: Record<string, React.ReactNode> = {
+                  "Parking": <Car className="h-5 w-5" />,
+                  "Garden": <Trees className="h-5 w-5" />,
+                  "Security": <ShieldCheck className="h-5 w-5" />,
+                  "Gym": <Dumbbell className="h-5 w-5" />,
+                  "Pool": <Waves className="h-5 w-5" />,
+                  "Elevator": <ArrowUpFromDot className="h-5 w-5" />,
+                  "Balcony": <Fence className="h-5 w-5" />,
+                  "CCTV": <Cctv className="h-5 w-5" />,
+                  "Internet": <Wifi className="h-5 w-5" />,
+                  "Generator": <Zap className="h-5 w-5" />,
+                };
+                const amenities = property.features.filter(f => f !== "Luxury");
+                if (amenities.length === 0) return null;
+                return (
+                  <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
+                    <h2 className="text-xl font-semibold mb-4">Amenities</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                      {amenities.map((feature, index) => (
+                        <div key={index} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-accent/50 border border-border hover:border-primary/30 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                            {amenityIcons[feature] || <Check className="h-5 w-5" />}
+                          </div>
+                          <span className="text-sm font-medium text-center">{feature}</span>
                         </div>
-                        <span>{feature}</span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Reviews Section */}
               <div className="bg-card rounded-2xl p-6 shadow-card border border-border">

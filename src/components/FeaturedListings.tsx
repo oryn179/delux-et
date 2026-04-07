@@ -66,6 +66,7 @@ export function FeaturedListings() {
                     type={property.listing_type}
                     price={property.price}
                     isFree={property.is_available}
+                    features={property.features}
                   />
                 </div>
               );
