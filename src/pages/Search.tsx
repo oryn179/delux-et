@@ -369,6 +369,7 @@ export default function Search() {
                             type={property.listing_type}
                             price={property.price}
                             isFree={property.is_available ?? false}
+                            features={property.features}
                           />
                         );
                       })}
