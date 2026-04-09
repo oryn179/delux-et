@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, Phone } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { lovable } from "@/integrations/lovable";
-import { UserTypeToggle } from "@/components/UserTypeToggle";
-import { supabase } from "@/integrations/supabase/client";
 import deluxLogo from "@/assets/delux-logo.png";
 
 export default function SignIn() {
@@ -16,8 +14,6 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [userType, setUserType] = useState<"seeker" | "owner">("seeker");
-  const [ownerPhone, setOwnerPhone] = useState("");
 
   const { signIn, signInWithGoogle } = useAuth();
   const { toast } = useToast();
@@ -26,44 +22,11 @@ export default function SignIn() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
 
-  const validateEthiopianPhone = (phone: string) => {
-    const cleaned = phone.replace(/[\s\-]/g, "");
-    return /^(\+251|0)(9|7)\d{8}$/.test(cleaned);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (userType === "owner" && ownerPhone) {
-      if (!validateEthiopianPhone(ownerPhone)) {
-        toast({ title: "Invalid phone", description: "Please enter a valid Ethiopian phone number.", variant: "destructive" });
-        return;
-      }
-    }
-
     setIsLoading(true);
     try {
       await signIn(email, password);
-
-      // If owner, submit owner request after login
-      if (userType === "owner" && ownerPhone) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // Check if request already exists
-          const { data: existing } = await supabase
-            .from("owner_requests")
-            .select("id")
-            .eq("user_id", user.id)
-            .maybeSingle();
-          if (!existing) {
-            await supabase.from("owner_requests").insert({
-              user_id: user.id,
-              phone: ownerPhone,
-            });
-          }
-        }
-      }
-
       toast({ title: "Welcome back!", description: "You have successfully signed in." });
       navigate(from, { replace: true });
     } catch (error: unknown) {
@@ -107,8 +70,6 @@ export default function SignIn() {
         </div>
 
         <div className="bg-card rounded-2xl p-6 md:p-8 shadow-elevated border border-border">
-          <UserTypeToggle userType={userType} onChange={setUserType} />
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
@@ -128,26 +89,6 @@ export default function SignIn() {
                 </button>
               </div>
             </div>
-
-            {/* Phone number for Home Owners */}
-            {userType === "owner" && (
-              <div className="space-y-2 animate-fade-in">
-                <Label htmlFor="owner-phone">Phone Number (Ethiopia)</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="owner-phone"
-                    type="tel"
-                    placeholder="+251 9X XXX XXXX"
-                    value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">Required for home owner verification</p>
-              </div>
-            )}
 
             <div className="flex justify-between items-center">
               <Link to="/forgot-password" className="text-sm text-primary hover:underline">Forgot password?</Link>

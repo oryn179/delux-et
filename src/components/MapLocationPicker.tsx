@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { MapPin, Link as LinkIcon } from "lucide-react";
 
 const areaCoordinates: Record<string, [number, number]> = {
   "Bole": [8.9953, 38.7857],
@@ -35,6 +36,42 @@ const pinIcon = new L.DivIcon({
   iconAnchor: [18, 36],
 });
 
+function parseGoogleMapsUrl(input: string): [number, number] | null {
+  // Try patterns like @lat,lng or /lat,lng
+  const atMatch = input.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (atMatch) {
+    const lat = parseFloat(atMatch[1]);
+    const lng = parseFloat(atMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+  }
+
+  // Try ?q=lat,lng or place/lat,lng
+  const qMatch = input.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (qMatch) {
+    const lat = parseFloat(qMatch[1]);
+    const lng = parseFloat(qMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+  }
+
+  // Try /maps/place/.../data or ll=lat,lng
+  const llMatch = input.match(/ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (llMatch) {
+    const lat = parseFloat(llMatch[1]);
+    const lng = parseFloat(llMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+  }
+
+  // Try direct coordinate pair: "lat, lng"
+  const directMatch = input.trim().match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if (directMatch) {
+    const lat = parseFloat(directMatch[1]);
+    const lng = parseFloat(directMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+  }
+
+  return null;
+}
+
 interface MapLocationPickerProps {
   area?: string;
   latitude?: number;
@@ -54,6 +91,7 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
   );
   const [latInput, setLatInput] = useState(latitude?.toString() || "");
   const [lngInput, setLngInput] = useState(longitude?.toString() || "");
+  const [googleMapsInput, setGoogleMapsInput] = useState("");
 
   const center: [number, number] = latitude && longitude
     ? [latitude, longitude]
@@ -134,8 +172,39 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
     }
   };
 
+  const handleGoogleMapsSubmit = () => {
+    const coords = parseGoogleMapsUrl(googleMapsInput);
+    if (coords) {
+      updateMarker(coords[0], coords[1]);
+      setGoogleMapsInput("");
+    }
+  };
+
   return (
     <div className="rounded-xl overflow-hidden border border-border">
+      {/* Google Maps URL input */}
+      <div className="flex gap-2 p-2 bg-muted/50 border-b border-border">
+        <div className="relative flex-1">
+          <LinkIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Paste Google Maps link or coordinates (e.g. 9.0192, 38.7525)"
+            value={googleMapsInput}
+            onChange={(e) => setGoogleMapsInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleGoogleMapsSubmit()}
+            className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md border border-border bg-background"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleGoogleMapsSubmit}
+          className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1"
+        >
+          <MapPin className="h-3 w-3" />
+          Set
+        </button>
+      </div>
+      {/* Manual coordinate inputs */}
       <div className="flex gap-2 p-2 bg-muted/50">
         <input
           type="text"
@@ -163,7 +232,7 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
       </div>
       <div ref={mapRef} style={{ height: "250px", width: "100%" }} />
       <p className="text-xs text-muted-foreground p-2 bg-muted/50">
-        📍 Click on the map or type coordinates above to set location
+        📍 Click on the map, type coordinates, or paste a Google Maps link to set location
         {position && <span className="ml-2 text-primary">({position[0].toFixed(4)}, {position[1].toFixed(4)})</span>}
       </p>
     </div>
