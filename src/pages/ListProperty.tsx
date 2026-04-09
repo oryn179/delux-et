@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, ShieldAlert, Clock, Ban, ScanSearch, CheckCircle, AlertTriangle, Sparkles, Shield } from "lucide-react";
+import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, CheckCircle, AlertTriangle, Sparkles, Shield, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,9 +10,6 @@ import { Switch } from "@/components/ui/switch";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { MapLocationPicker } from "@/components/MapLocationPicker";
-import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/hooks/useProfile";
-import { useOwnerRequest } from "@/hooks/useOwnerRequest";
 import { useCreateProperty, useUploadPropertyImage, useAddPropertyImage } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
 import { addisAbabaAreas, cities } from "@/data/addisAbabaAreas";
@@ -63,7 +60,6 @@ export default function ListProperty() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
-  const { data: ownerRequest, isLoading: ownerLoading } = useOwnerRequest(user?.id);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,90 +112,12 @@ export default function ListProperty() {
     );
   }
 
-  if (profileLoading || ownerLoading) {
+  if (profileLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (ownerRequest?.status === "banned") {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center gradient-hero">
-          <div className="text-center p-8 max-w-md animate-fade-in">
-            <div className="w-20 h-20 rounded-full bg-destructive/10 mx-auto mb-6 flex items-center justify-center">
-              <Ban className="h-10 w-10 text-destructive animate-pulse" />
-            </div>
-            <h1 className="text-2xl font-display font-bold mb-3 text-destructive">Request Denied</h1>
-            <p className="text-muted-foreground mb-4">
-              {ownerRequest?.admin_note === "Posting Not related content"
-                ? "You can use a new account by posting something unrelated to the reason you were banned, but please don't do anything like this again."
-                : "Please don't try this again, you're doing something wrong."}
-            </p>
-            {ownerRequest?.admin_note && (
-              <p className="text-sm text-muted-foreground bg-destructive/5 rounded-xl p-4 mb-6">
-                <span className="font-medium text-destructive">Reason:</span> {ownerRequest.admin_note}
-              </p>
-            )}
-            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (ownerRequest?.status === "pending") {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center gradient-hero">
-          <div className="text-center p-8 max-w-md animate-fade-in">
-            <div className="w-20 h-20 rounded-full bg-accent mx-auto mb-6 flex items-center justify-center">
-              <Clock className="h-10 w-10 text-primary animate-spin" style={{ animationDuration: "3s" }} />
-            </div>
-            <h1 className="text-2xl font-display font-bold mb-3">Under Review</h1>
-            <p className="text-muted-foreground mb-6">
-              The information you entered has been sent successfully. Please wait a moment while we process and verify your information.
-            </p>
-            <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-              <p className="text-xs text-muted-foreground">This usually takes a few hours. You'll be notified once approved.</p>
-            </div>
-            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (!ownerRequest) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center gradient-hero">
-          <div className="text-center p-8 max-w-md">
-            <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 mx-auto mb-4 flex items-center justify-center">
-              <ShieldAlert className="h-8 w-8 text-amber-600" />
-            </div>
-            <h1 className="text-2xl font-display font-bold mb-2">Home Owner Verification Required</h1>
-            <p className="text-muted-foreground mb-6">
-              To post property listings, you need to register as a Home Owner. Please sign in as a Home Owner to submit your request for approval.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
-              <Button onClick={() => navigate("/signin")} className="gradient-primary border-0">
-                Sign In as Owner
-              </Button>
-            </div>
-          </div>
         </main>
         <Footer />
       </div>

@@ -1,15 +1,13 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { Eye, EyeOff, Mail, Phone, Lock, User, Gift } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { lovable } from "@/integrations/lovable";
-import { UserTypeToggle } from "@/components/UserTypeToggle";
-import { supabase } from "@/integrations/supabase/client";
 import deluxLogo from "@/assets/delux-logo.png";
 
 export default function SignUp() {
@@ -20,9 +18,6 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [referralCode, setReferralCode] = useState(searchParams.get("ref") || "");
   const [isLoading, setIsLoading] = useState(false);
-  const [userType, setUserType] = useState<"seeker" | "owner">("seeker");
-  const [ownerPhone, setOwnerPhone] = useState("");
-  const [phoneError, setPhoneError] = useState("");
 
   const { signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
@@ -35,53 +30,20 @@ export default function SignUp() {
   }, []);
   const [captchaAnswer, setCaptchaAnswer] = useState("");
 
-  const validateEthiopianPhone = (phone: string) => {
-    const cleaned = phone.replace(/[\s\-]/g, "");
-    return /^(\+251|0)(9|7)\d{8}$/.test(cleaned);
-  };
-
-  const checkPhoneUniqueness = async (phone: string): Promise<boolean> => {
-    const cleaned = phone.replace(/[\s\-]/g, "");
-    const { data } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("phone", cleaned)
-      .maybeSingle();
-    return !data;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPhoneError("");
 
     if (parseInt(captchaAnswer) !== captcha.answer) {
       toast({ title: "Wrong answer", description: "Please solve the math problem correctly.", variant: "destructive" });
       return;
     }
 
-    if (userType === "owner") {
-      if (!ownerPhone || !validateEthiopianPhone(ownerPhone)) {
-        toast({ title: "Invalid phone", description: "Please enter a valid Ethiopian phone number.", variant: "destructive" });
-        return;
-      }
-      const isUnique = await checkPhoneUniqueness(ownerPhone);
-      if (!isUnique) {
-        setPhoneError("This phone number is already registered.");
-        toast({ title: "Phone already used", description: "This phone number is already registered by another user.", variant: "destructive" });
-        return;
-      }
-    }
-
     setIsLoading(true);
     try {
-      await signUp(email, password, { name, phone: userType === "owner" ? ownerPhone : undefined });
+      await signUp(email, password, { name });
 
       if (referralCode.trim()) {
         localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
-      }
-
-      if (userType === "owner") {
-        localStorage.setItem("pending_owner_phone", ownerPhone);
       }
 
       toast({ title: "Account created!", description: "Please check your email to verify your account." });
@@ -98,9 +60,6 @@ export default function SignUp() {
     if (referralCode.trim()) {
       localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
     }
-    if (userType === "owner" && ownerPhone) {
-      localStorage.setItem("pending_owner_phone", ownerPhone);
-    }
     try {
       await signInWithGoogle();
     } catch (error: unknown) {
@@ -112,9 +71,6 @@ export default function SignUp() {
   const handleAppleSignup = async () => {
     if (referralCode.trim()) {
       localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
-    }
-    if (userType === "owner" && ownerPhone) {
-      localStorage.setItem("pending_owner_phone", ownerPhone);
     }
     try {
       const { error } = await lovable.auth.signInWithOAuth("apple", {
@@ -139,8 +95,6 @@ export default function SignUp() {
         </div>
 
         <div className="bg-card rounded-2xl p-6 md:p-8 shadow-elevated border border-border">
-          <UserTypeToggle userType={userType} onChange={setUserType} />
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
@@ -168,26 +122,6 @@ export default function SignUp() {
                 </button>
               </div>
             </div>
-
-            {userType === "owner" && (
-              <div className="space-y-2 animate-fade-in">
-                <Label htmlFor="owner-phone">Phone Number (Ethiopia)</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="owner-phone"
-                    type="tel"
-                    placeholder="+251 9X XXX XXXX"
-                    value={ownerPhone}
-                    onChange={(e) => { setOwnerPhone(e.target.value); setPhoneError(""); }}
-                    className={`pl-10 ${phoneError ? "border-destructive" : ""}`}
-                    required
-                  />
-                </div>
-                {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
-                <p className="text-xs text-muted-foreground">Only Ethiopian numbers (+251). Required for approval.</p>
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="referral" className="flex items-center gap-1.5">
