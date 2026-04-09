@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, CheckCircle, AlertTriangle, Sparkles, Shield, Clock } from "lucide-react";
+import { ArrowLeft, Home, DollarSign, MapPin, Bed, Upload, Check, X, Loader2, CheckCircle, AlertTriangle, Sparkles, Shield, Clock, ScanSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { MapLocationPicker } from "@/components/MapLocationPicker";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { useCreateProperty, useUploadPropertyImage, useAddPropertyImage } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
 import { addisAbabaAreas, cities } from "@/data/addisAbabaAreas";
