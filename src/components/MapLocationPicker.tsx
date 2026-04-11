@@ -178,6 +178,13 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
     if (coords) {
       updateMarker(coords[0], coords[1]);
       setGoogleMapsInput("");
+      toast.success("Location set!", {
+        description: `Coordinates: ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`,
+      });
+    } else if (googleMapsInput.trim()) {
+      toast.error("Could not parse coordinates", {
+        description: "Please paste a valid Google Maps link or coordinates like 9.0192, 38.7525",
+      });
     }
   };
 
