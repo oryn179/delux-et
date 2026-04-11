@@ -303,7 +303,6 @@ export default function Admin() {
     } catch (err) { console.error("Failed to send notification email:", err); }
   };
 
-  };
 
   const handleSendChatReply = async () => {
     if (!selectedChatUser || !chatReply.trim() || !user) return;
