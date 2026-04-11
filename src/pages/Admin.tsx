@@ -111,7 +111,7 @@ export default function Admin() {
 
   const fetchAllData = async () => {
     try {
-      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes, referralsRes, ownerReqRes] = await Promise.all([
+      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes, referralsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("properties").select("*, property_images(*)").order("created_at", { ascending: false }),
         supabase.from("login_history").select("*").order("logged_in_at", { ascending: false }).limit(100),
