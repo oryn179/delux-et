@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAllOwnerRequests } from "@/hooks/useOwnerRequest";
+
 import { useAllSupportChats, useSendAdminReply } from "@/hooks/useSupportChat";
 import {
   Users, Home, Shield, Settings, LogIn, CheckCircle, XCircle, Trash2,
@@ -62,8 +62,6 @@ export default function Admin() {
   const [comingSoonMessage, setComingSoonMessage] = useState("Mobile app, advanced filters & more features are on the way!");
   const [isSavingComingSoon, setIsSavingComingSoon] = useState(false);
 
-  const [ownerRequests, setOwnerRequests] = useState<any[]>([]);
-  const [ownerNote, setOwnerNote] = useState("");
 
   // Support chat state
   const { data: supportChats } = useAllSupportChats();
@@ -113,7 +111,7 @@ export default function Admin() {
 
   const fetchAllData = async () => {
     try {
-      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes, referralsRes, ownerReqRes] = await Promise.all([
+      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes, referralsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("properties").select("*, property_images(*)").order("created_at", { ascending: false }),
         supabase.from("login_history").select("*").order("logged_in_at", { ascending: false }).limit(100),
@@ -124,7 +122,7 @@ export default function Admin() {
         supabase.from("property_views").select("*").order("viewed_at", { ascending: false }).limit(500),
         supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("referrals").select("*").order("created_at", { ascending: false }),
-        supabase.from("owner_requests").select("*").order("created_at", { ascending: false }),
+        
       ]);
 
       setProfiles(profilesRes.data || []);
@@ -138,7 +136,7 @@ export default function Admin() {
       setPropertyViews(viewsRes.data || []);
       setMessages(messagesRes.data || []);
       setReferrals(referralsRes.data || []);
-      setOwnerRequests(ownerReqRes.data || []);
+      
 
       const titleSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_title");
       const msgSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_message");
@@ -305,40 +303,6 @@ export default function Admin() {
     } catch (err) { console.error("Failed to send notification email:", err); }
   };
 
-  const handleApproveOwner = async (req: any) => {
-    const profile = getProfileByUserId(req.user_id);
-    await supabase.from("owner_requests").update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
-    await logAdminAction("approve_owner", "owner_request", req.id, { user_id: req.user_id });
-    await supabase.from("profiles").update({ verified: true }).eq("user_id", req.user_id);
-    await supabase.from("notifications").insert({
-      user_id: req.user_id,
-      type: "owner_approved",
-      title: "Request Approved! 🎉",
-      message: "Your Home Owner request has been approved. You can now post property listings on Delux!",
-      link: "/list-property",
-    });
-    sendListingNotificationEmail(req.user_id, "owner_approved");
-    toast({ title: "Owner approved", description: `${profile?.name || "User"} can now post listings.` });
-    fetchAllData();
-  };
-
-  const handleBanOwner = async (req: any, banReasonText: string) => {
-    await supabase.from("owner_requests").update({ status: "banned", admin_note: banReasonText || null, reviewed_at: new Date().toISOString(), reviewed_by: user!.id }).eq("id", req.id);
-    await logAdminAction("ban_owner", "owner_request", req.id, { user_id: req.user_id, reason: banReasonText });
-    await supabase.from("notifications").insert({
-      user_id: req.user_id,
-      type: "owner_banned",
-      title: "Request Denied",
-      message: banReasonText
-        ? `Your Home Owner request has been denied. Reason: ${banReasonText}`
-        : "Your Home Owner request has been denied. If you believe this is a mistake, please contact support.",
-      link: "/support",
-    });
-    sendListingNotificationEmail(req.user_id, "owner_banned", undefined, banReasonText);
-    toast({ title: "Request banned" });
-    setOwnerNote("");
-    fetchAllData();
-  };
 
   const handleSendChatReply = async () => {
     if (!selectedChatUser || !chatReply.trim() || !user) return;
@@ -497,10 +461,10 @@ export default function Admin() {
               <TabsTrigger value="comingsoon" className="gap-2"><Rocket className="h-4 w-4" />Coming Soon</TabsTrigger>
               <TabsTrigger value="referrals" className="gap-2"><Gift className="h-4 w-4" />Referrals</TabsTrigger>
               <TabsTrigger value="owners" className="gap-2 relative">
-                <UserCheck className="h-4 w-4" />Owners
-                {(pendingListings.length > 0 || ownerRequests.filter((r: any) => r.status === "pending").length > 0) && (
+                <UserCheck className="h-4 w-4" />Listings
+                {pendingListings.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {pendingListings.length + ownerRequests.filter((r: any) => r.status === "pending").length}
+                    {pendingListings.length}
                   </span>
                 )}
               </TabsTrigger>
@@ -1157,110 +1121,6 @@ export default function Admin() {
 
             {/* Owner Requests Tab */}
             <TabsContent value="owners">
-              <div className="bg-card rounded-2xl p-6 shadow-card border border-border space-y-6">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <UserCheck className="h-5 w-5 text-primary" /> Home Owner Requests
-                </h2>
-
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {ownerRequests.map((req: any) => {
-                        const profile = getProfileByUserId(req.user_id);
-                        return (
-                          <TableRow key={req.id} className={req.status === "banned" ? "bg-destructive/10" : ""}>
-                            <TableCell className="font-medium">{profile?.name || req.user_id.slice(0, 8)}</TableCell>
-                            <TableCell>{req.phone}</TableCell>
-                            <TableCell>
-                              {req.status === "approved" && <Badge className="bg-primary/10 text-primary">Approved</Badge>}
-                              {req.status === "pending" && <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>}
-                              {req.status === "banned" && <Badge variant="destructive">Banned</Badge>}
-                            </TableCell>
-                            <TableCell className="text-sm">{format(new Date(req.created_at), "MMM d, yyyy")}</TableCell>
-                            <TableCell>
-                              <div className="flex gap-1 flex-wrap">
-                                {req.status === "pending" && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="gap-1"
-                                      onClick={() => handleApproveOwner(req)}
-                                    >
-                                      <CheckCircle className="h-3 w-3" /> Approve
-                                    </Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="outline" size="sm" className="gap-1 text-destructive">
-                                          <Ban className="h-3 w-3" /> Ban
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                       <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Ban Owner Request</AlertDialogTitle>
-                                          <AlertDialogDescription>This will permanently deny this user from posting listings. Select a reason:</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <div className="space-y-3">
-                                          <div className="space-y-2">
-                                            {[
-                                              "Posting Not related content",
-                                              "Suspicious or fraudulent activity",
-                                              "Fake property listings",
-                                              "Inappropriate or offensive content",
-                                              "Spam or repeated violations",
-                                            ].map((reason) => (
-                                              <button
-                                                key={reason}
-                                                className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ${ownerNote === reason ? "border-destructive bg-destructive/10 text-destructive" : "border-border hover:border-destructive/50"}`}
-                                                onClick={() => setOwnerNote(reason)}
-                                              >
-                                                {reason}
-                                              </button>
-                                            ))}
-                                          </div>
-                                          <div className="space-y-1">
-                                            <Label className="text-xs">Or custom reason:</Label>
-                                            <Input value={ownerNote} onChange={(e) => setOwnerNote(e.target.value)} placeholder="Custom reason..." />
-                                          </div>
-                                        </div>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction
-                                            className="bg-destructive text-destructive-foreground"
-                                            onClick={() => handleBanOwner(req, ownerNote)}
-                                          >
-                                            Ban
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </>
-                                )}
-                                {req.status === "approved" && (
-                                  <Badge className="bg-primary/10 text-primary">Active</Badge>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {ownerRequests.length === 0 && (
-                        <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No owner requests yet</TableCell></TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
               {/* Listing Review Section */}
               <div className="bg-card rounded-2xl p-6 shadow-card border border-border space-y-6">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
