@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, Link as LinkIcon } from "lucide-react";
+import { toast } from "sonner";
 
 const areaCoordinates: Record<string, [number, number]> = {
   "Bole": [8.9953, 38.7857],
