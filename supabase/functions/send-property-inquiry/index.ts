@@ -44,6 +44,15 @@ interface PropertyInquiryRequest {
   message: string;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -70,6 +79,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields");
     }
 
+    // Validate input lengths
+    if (senderName.length > 100 || senderEmail.length > 255 || message.length > 5000) {
+      throw new Error("Input exceeds maximum length");
+    }
+
     // Get property owner's email from the database
     const { data: property, error: propertyError } = await supabase
       .from("properties")
@@ -92,11 +106,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     const ownerEmail = userData.user.email;
 
+    // Sanitize all user inputs for HTML
+    const safeOwnerName = escapeHtml(ownerName);
+    const safePropertyTitle = escapeHtml(propertyTitle);
+    const safeSenderName = escapeHtml(senderName);
+    const safeSenderEmail = escapeHtml(senderEmail);
+    const safeSenderPhone = senderPhone ? escapeHtml(senderPhone) : '';
+    const safeMessage = escapeHtml(message).replace(/\n/g, '<br>');
+
     // Send email to property owner
     await sendEmail({
       from: "DELUX <noreply@resend.dev>",
       to: [ownerEmail],
-      subject: `New inquiry about your property: ${propertyTitle}`,
+      subject: `New inquiry about your property: ${safePropertyTitle}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -117,20 +139,20 @@ const handler = async (req: Request): Promise<Response> => {
               <h1 style="margin: 0;">🏠 New Property Inquiry</h1>
             </div>
             <div class="content">
-              <p>Hello ${ownerName},</p>
+              <p>Hello ${safeOwnerName},</p>
               <p>You have received a new inquiry about your property listing:</p>
-              <p><strong>${propertyTitle}</strong></p>
+              <p><strong>${safePropertyTitle}</strong></p>
               
               <div class="message-box">
-                <h3 style="margin-top: 0;">Message from ${senderName}:</h3>
-                <p>${message.replace(/\n/g, '<br>')}</p>
+                <h3 style="margin-top: 0;">Message from ${safeSenderName}:</h3>
+                <p>${safeMessage}</p>
               </div>
               
               <div class="contact-info">
                 <h4 style="margin-top: 0;">Contact Information:</h4>
-                <p><strong>Name:</strong> ${senderName}</p>
-                <p><strong>Email:</strong> <a href="mailto:${senderEmail}">${senderEmail}</a></p>
-                ${senderPhone ? `<p><strong>Phone:</strong> ${senderPhone}</p>` : ''}
+                <p><strong>Name:</strong> ${safeSenderName}</p>
+                <p><strong>Email:</strong> <a href="mailto:${safeSenderEmail}">${safeSenderEmail}</a></p>
+                ${safeSenderPhone ? `<p><strong>Phone:</strong> ${safeSenderPhone}</p>` : ''}
               </div>
               
               <p>Reply directly to this email or use the contact information above to respond to the inquiry.</p>

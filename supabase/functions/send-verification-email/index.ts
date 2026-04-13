@@ -78,9 +78,7 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           emailSent,
-          // In development/testing, return the code so users can verify
-          // Remove this in production!
-          ...(emailSent ? {} : { devCode: code }),
+      // Never expose verification codes in the response
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
