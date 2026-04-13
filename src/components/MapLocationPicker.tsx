@@ -93,6 +93,8 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
   const [latInput, setLatInput] = useState(latitude?.toString() || "");
   const [lngInput, setLngInput] = useState(longitude?.toString() || "");
   const [googleMapsInput, setGoogleMapsInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   const center: [number, number] = latitude && longitude
     ? [latitude, longitude]
