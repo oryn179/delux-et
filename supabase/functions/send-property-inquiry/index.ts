@@ -44,6 +44,15 @@ interface PropertyInquiryRequest {
   message: string;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -68,6 +77,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Validate required fields
     if (!propertyId || !propertyTitle || !senderName || !senderEmail || !message) {
       throw new Error("Missing required fields");
+    }
+
+    // Validate input lengths
+    if (senderName.length > 100 || senderEmail.length > 255 || message.length > 5000) {
+      throw new Error("Input exceeds maximum length");
     }
 
     // Get property owner's email from the database
