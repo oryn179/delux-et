@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, Link as LinkIcon } from "lucide-react";
+import { MapPin, Link as LinkIcon, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const areaCoordinates: Record<string, [number, number]> = {
@@ -93,6 +93,8 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
   const [latInput, setLatInput] = useState(latitude?.toString() || "");
   const [lngInput, setLngInput] = useState(longitude?.toString() || "");
   const [googleMapsInput, setGoogleMapsInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   const center: [number, number] = latitude && longitude
     ? [latitude, longitude]
@@ -188,8 +190,66 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
     }
   };
 
+  const handleSearchSubmit = async () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+    setIsSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Addis Ababa, Ethiopia")}&limit=1`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const results = await res.json();
+      if (results.length > 0) {
+        const lat = parseFloat(results[0].lat);
+        const lng = parseFloat(results[0].lon);
+        updateMarker(lat, lng);
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setView([lat, lng], 16);
+        }
+        toast.success("Location found!", {
+          description: results[0].display_name?.split(",").slice(0, 3).join(","),
+        });
+        setSearchQuery("");
+      } else {
+        toast.error("Location not found", {
+          description: "Try a different name or use coordinates instead",
+        });
+      }
+    } catch {
+      toast.error("Search failed", {
+        description: "Please check your connection and try again",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   return (
     <div className="rounded-xl overflow-hidden border border-border">
+      {/* Location name search */}
+      <div className="flex gap-2 p-2 bg-muted/50 border-b border-border">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search location (e.g. Bole, Megenagna, CMC)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
+            className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md border border-border bg-background"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleSearchSubmit}
+          disabled={isSearching}
+          className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1 disabled:opacity-50"
+        >
+          {isSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+          Search
+        </button>
+      </div>
       {/* Google Maps URL input */}
       <div className="flex gap-2 p-2 bg-muted/50 border-b border-border">
         <div className="relative flex-1">
@@ -240,7 +300,7 @@ export function MapLocationPicker({ area, latitude, longitude, onLocationChange 
       </div>
       <div ref={mapRef} style={{ height: "250px", width: "100%" }} />
       <p className="text-xs text-muted-foreground p-2 bg-muted/50">
-        📍 Click on the map, type coordinates, or paste a Google Maps link to set location
+        📍 Search by name, click the map, type coordinates, or paste a Google Maps link
         {position && <span className="ml-2 text-primary">({position[0].toFixed(4)}, {position[1].toFixed(4)})</span>}
       </p>
     </div>
