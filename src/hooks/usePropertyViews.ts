@@ -58,6 +58,7 @@ export function usePropertyViewCount(propertyId: string) {
       return count || 0;
     },
     enabled: !!propertyId,
+    staleTime: 10 * 60 * 1000, // 10 min - views don't change fast
   });
 }
 
@@ -91,6 +92,7 @@ export function useUserPropertyViews(userId: string | undefined) {
       return views as PropertyView[];
     },
     enabled: !!userId,
+    staleTime: 10 * 60 * 1000,
   });
 }
 
@@ -122,5 +124,6 @@ export function useTotalUserViews(userId: string | undefined) {
       return count || 0;
     },
     enabled: !!userId,
+    staleTime: 10 * 60 * 1000,
   });
 }
