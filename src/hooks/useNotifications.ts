@@ -33,6 +33,7 @@ export function useNotifications(userId: string | undefined) {
       return data as Notification[];
     },
     enabled: !!userId,
+    staleTime: 2 * 60 * 1000, // 2 min - realtime handles new notifications
   });
 
   // Subscribe to real-time notifications
@@ -85,6 +86,7 @@ export function useUnreadNotificationCount(userId: string | undefined) {
       return count || 0;
     },
     enabled: !!userId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 

@@ -35,7 +35,16 @@ import NotFound from "./pages/NotFound";
 import { BuyMeCoffeeWidget } from "@/components/BuyMeCoffeeWidget";
 import { InviteWidget } from "@/components/InviteWidget";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes - avoid refetching fresh data
+      gcTime: 10 * 60 * 1000, // 10 minutes - keep cache longer
+      refetchOnWindowFocus: false, // don't refetch on tab switch
+      retry: 1, // only retry once on failure
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
