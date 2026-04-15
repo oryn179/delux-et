@@ -33,6 +33,10 @@ const propertyTypes: { value: Database["public"]["Enums"]["property_type"]; labe
   { value: "real-estate", label: "Real Estate", icon: "🏗️" },
 ];
 
+const comingSoonTypes = [
+  { value: "car", label: "Car", icon: "🚗" },
+];
+
 const AMENITIES = [
   { id: "parking", label: "Parking", icon: "🅿️" },
   { id: "garden", label: "Garden", icon: "🌿" },
@@ -83,6 +87,8 @@ export default function ListProperty() {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sharePhone, setSharePhone] = useState(false);
+  const [comingSoonTooltip, setComingSoonTooltip] = useState<string | null>(null);
   const [validatingImage, setValidatingImage] = useState<number | null>(null);
   const [imageValidationStatus, setImageValidationStatus] = useState<Record<number, "checking" | "valid" | "invalid">>({});
   const [listingSubmitted, setListingSubmitted] = useState(false);
@@ -399,6 +405,24 @@ export default function ListProperty() {
                         <p className="font-medium mt-1">{type.label}</p>
                       </button>
                     ))}
+                    {comingSoonTypes.map((type) => (
+                      <div
+                        key={type.value}
+                        className="relative p-4 rounded-xl border-2 border-border text-left opacity-60 cursor-not-allowed"
+                        onMouseEnter={() => setComingSoonTooltip(type.value)}
+                        onMouseLeave={() => setComingSoonTooltip(null)}
+                        onTouchStart={() => setComingSoonTooltip(type.value)}
+                        onTouchEnd={() => setTimeout(() => setComingSoonTooltip(null), 2000)}
+                      >
+                        <span className="text-2xl">{type.icon}</span>
+                        <p className="font-medium mt-1">{type.label}</p>
+                        {comingSoonTooltip === type.value && (
+                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap z-50 animate-fade-in shadow-lg">
+                            🚀 Coming Soon
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
                 {/* Luxury Toggle */}
@@ -570,6 +594,26 @@ export default function ListProperty() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">Upload up to 5 images. First image will be the cover photo. Each image is AI-verified (max ~5 min).</p>
+
+                {/* Phone sharing consent */}
+                <div className="bg-accent/50 border border-border rounded-xl p-4 mt-4">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="sharePhone"
+                      checked={sharePhone}
+                      onCheckedChange={(checked) => setSharePhone(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <Label htmlFor="sharePhone" className="font-medium cursor-pointer">
+                        Share my phone number with interested buyers/renters
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        If enabled, your phone number will be visible on this listing so people can contact you directly. You can change this later.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
