@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Heart, Bed, Bath, MapPin, Check, Phone, Share2, Shield, ChevronLeft, ChevronRight, Loader2, MessageCircle, Scale, Eye, X, ZoomIn, Crown, Car, Trees, ShieldCheck, Dumbbell, Waves, ArrowUpFromDot, Fence, Cctv, Wifi, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,8 +103,56 @@ export default function PropertyDetails() {
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
+  const primaryImageUrl = property.property_images?.find((img) => img.is_primary)?.image_url
+    || property.property_images?.[0]?.image_url
+    || "https://delux-et.lovable.app/placeholder.svg";
+
+  const listingJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateListing",
+    "name": property.title,
+    "description": property.description || `${property.bedrooms} bedroom ${property.property_type} in ${property.area}, ${property.city}`,
+    "url": `https://delux-et.lovable.app/property/${property.id}`,
+    "image": primaryImageUrl,
+    "datePosted": property.created_at,
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": property.area,
+      "addressRegion": property.city,
+      "addressCountry": "ET"
+    },
+    ...(property.latitude && property.longitude ? {
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": property.latitude,
+        "longitude": property.longitude
+      }
+    } : {}),
+    ...(property.price ? {
+      "offers": {
+        "@type": "Offer",
+        "price": property.price,
+        "priceCurrency": "ETB",
+        "availability": property.is_available ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+      }
+    } : {}),
+    "numberOfRooms": property.bedrooms,
+    "numberOfBathroomsTotal": property.bathrooms
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>{`${property.title} – ${property.area}, ${property.city} | Delux ET`}</title>
+        <meta name="description" content={(property.description || `${property.bedrooms} bedroom ${property.property_type} in ${property.area}, ${property.city}. Contact owner directly with no commission on Delux ET.`).slice(0, 155)} />
+        <link rel="canonical" href={`https://delux-et.lovable.app/property/${property.id}`} />
+        <meta property="og:title" content={`${property.title} | Delux ET`} />
+        <meta property="og:description" content={(property.description || `${property.bedrooms} bed ${property.property_type} in ${property.area}`).slice(0, 155)} />
+        <meta property="og:image" content={primaryImageUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://delux-et.lovable.app/property/${property.id}`} />
+        <script type="application/ld+json">{JSON.stringify(listingJsonLd)}</script>
+      </Helmet>
       <Header />
       <main className="flex-1">
         {/* Back Button */}
