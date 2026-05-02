@@ -4,6 +4,7 @@ import { CheckCircle } from "lucide-react";
 import { Hero } from "@/components/Hero";
 import { FeaturedListings } from "@/components/FeaturedListings";
 import { AboutSection } from "@/components/AboutSection";
+import { LiveStats } from "@/components/LiveStats";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { PropertyCard } from "@/components/PropertyCard";
@@ -36,6 +37,36 @@ const Index = () => {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Delux ET – Free Home Platform" />
         <meta name="twitter:description" content="Find homes without commission in Ethiopia." />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "name": "Delux ET",
+              "url": "https://delux-et.lovable.app/",
+              "logo": "https://delux-et.lovable.app/placeholder.svg",
+              "description": "Free real estate platform for Ethiopia — no agents, no commission.",
+              "areaServed": { "@type": "Country", "name": "Ethiopia" }
+            },
+            {
+              "@type": "WebSite",
+              "name": "Delux ET",
+              "url": "https://delux-et.lovable.app/",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://delux-et.lovable.app/search?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            },
+            {
+              "@type": "RealEstateAgent",
+              "name": "Delux ET",
+              "url": "https://delux-et.lovable.app/",
+              "areaServed": "Ethiopia",
+              "priceRange": "Free"
+            }
+          ]
+        })}</script>
       </Helmet>
       <Header />
       <main className="flex-1">
@@ -94,7 +125,9 @@ const Index = () => {
         ) : (
           <FeaturedListings />
         )}
-        
+
+        <LiveStats />
+
         {/* SEO Content Section */}
         <section className="py-16 bg-background">
           <div className="container max-w-4xl">
