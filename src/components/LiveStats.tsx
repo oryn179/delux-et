@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Home, Users, Eye, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function useLiveStats() {
   return useQuery({
@@ -58,6 +58,27 @@ function AnimatedNumber({ value }: { value: number }) {
 
 export function LiveStats() {
   const { data, isLoading } = useLiveStats();
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["live-stats"] });
+      }, 3000);
+    };
+    const channel = supabase
+      .channel("live-stats-feed")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "properties" }, scheduleRefresh)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "property_views" }, scheduleRefresh)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "profiles" }, scheduleRefresh)
+      .subscribe();
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const stats = [
     { icon: Home, label: "Active Listings", value: data?.listings ?? 0, color: "text-primary" },
