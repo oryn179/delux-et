@@ -406,22 +406,29 @@ export default function ListProperty() {
                       </button>
                     ))}
                     {comingSoonTypes.map((type) => (
-                      <div
+                      <button
                         key={type.value}
-                        className="relative p-4 rounded-xl border-2 border-border text-left opacity-60 cursor-not-allowed"
+                        type="button"
+                        aria-disabled="true"
+                        aria-label={`${type.label} — coming soon`}
+                        title="Coming soon"
+                        className="relative p-4 rounded-xl border-2 border-border text-left opacity-60 cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        onClick={(e) => { e.preventDefault(); setComingSoonTooltip(type.value); setTimeout(() => setComingSoonTooltip(null), 2000); }}
                         onMouseEnter={() => setComingSoonTooltip(type.value)}
                         onMouseLeave={() => setComingSoonTooltip(null)}
+                        onFocus={() => setComingSoonTooltip(type.value)}
+                        onBlur={() => setComingSoonTooltip(null)}
                         onTouchStart={() => setComingSoonTooltip(type.value)}
                         onTouchEnd={() => setTimeout(() => setComingSoonTooltip(null), 2000)}
                       >
-                        <span className="text-2xl">{type.icon}</span>
+                        <span className="text-2xl" aria-hidden="true">{type.icon}</span>
                         <p className="font-medium mt-1">{type.label}</p>
                         {comingSoonTooltip === type.value && (
-                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap z-50 animate-fade-in shadow-lg">
+                          <div role="tooltip" className="absolute -top-10 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap z-50 animate-fade-in shadow-lg">
                             🚀 Coming Soon
                           </div>
                         )}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
