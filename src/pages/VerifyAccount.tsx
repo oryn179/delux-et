@@ -7,15 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
+import { useProfile } from "@/hooks/useProfile";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function VerifyAccount() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { data: profile } = useProfile(user?.id);
-  const updateProfile = useUpdateProfile();
+  const queryClient = useQueryClient();
 
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<"quiz" | "success">("quiz");
@@ -74,14 +76,21 @@ export default function VerifyAccount() {
 
     setIsLoading(true);
     try {
-      await updateProfile.mutateAsync({
-        userId: user.id,
-        updates: { verified: true, verification_method: "security_question" },
+      const { data, error } = await supabase.functions.invoke("mark-verified", {
+        body: { captcha, answer: parseInt(captchaAnswer, 10) },
       });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || "Verification failed");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
       setStep("success");
       toast({ title: "Verified! ✅", description: "Your account has been verified." });
     } catch (error) {
-      toast({ title: "Error", description: "Failed to verify account.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to verify account.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
