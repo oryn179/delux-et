@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
+import { useProfile } from "@/hooks/useProfile";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function VerifyAccount() {
   const navigate = useNavigate();
