@@ -17,7 +17,7 @@ export default function VerifyAccount() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { data: profile } = useProfile(user?.id);
-  const updateProfile = useUpdateProfile();
+  const queryClient = useQueryClient();
 
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<"quiz" | "success">("quiz");
