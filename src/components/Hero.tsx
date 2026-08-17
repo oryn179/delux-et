@@ -49,10 +49,10 @@ export function Hero({ onSearch }: HeroProps) {
 
 Please think step-by-step in order to resolve it.
 \`\`\`
-Edge function returned 400: Error, {"error":"Failed to create user profile: Could not find the 'full_name' column of 'profiles' in the schema cache"}
+Edge function returned 400: Error, {"error":"Failed to create user profile: null value in column \"user_id\" of relation \"profiles\" violates not-null constraint"}
 
 {
-  "timestamp": 1786969851632,
+  "timestamp": 1786969936442,
   "error_type": "RUNTIME_ERROR",
   "filename": "supabase/functions/send-telegram-otp/index.ts",
   "lineno": 0,
