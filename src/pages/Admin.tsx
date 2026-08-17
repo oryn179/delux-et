@@ -44,6 +44,9 @@ export default function Admin() {
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
   const [systemSettings, setSystemSettings] = useState<any[]>([]);
+  const [buyDeals, setBuyDeals] = useState<any[]>([]);
+  const [isAddingDeal, setIsAddingDeal] = useState(false);
+  const [newDeal, setNewDeal] = useState({ title: "", description: "", price_info: "", telegram_bot_link: "" });
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
   const [banReason, setBanReason] = useState("");
@@ -111,7 +114,7 @@ export default function Admin() {
 
   const fetchAllData = async () => {
     try {
-      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes, referralsRes] = await Promise.all([
+      const [profilesRes, propertiesRes, loginRes, rolesRes, logsRes, donationsRes, settingsRes, viewsRes, messagesRes, referralsRes, dealsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("properties").select("*, property_images(*)").order("created_at", { ascending: false }),
         supabase.from("login_history").select("*").order("logged_in_at", { ascending: false }).limit(100),
@@ -122,7 +125,7 @@ export default function Admin() {
         supabase.from("property_views").select("*").order("viewed_at", { ascending: false }).limit(500),
         supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("referrals").select("*").order("created_at", { ascending: false }),
-        
+        supabase.from("buy_service_deals").select("*").order("created_at", { ascending: false }),
       ]);
 
       setProfiles(profilesRes.data || []);
@@ -136,6 +139,7 @@ export default function Admin() {
       setPropertyViews(viewsRes.data || []);
       setMessages(messagesRes.data || []);
       setReferrals(referralsRes.data || []);
+      setBuyDeals(dealsRes.data || []);
       
 
       const titleSetting = (settingsRes.data || []).find((s: any) => s.key === "coming_soon_title");
@@ -312,6 +316,36 @@ export default function Admin() {
       toast({ title: "Reply sent" });
     } catch {
       toast({ title: "Error", description: "Failed to send reply.", variant: "destructive" });
+    }
+  };
+
+  const handleAddDeal = async () => {
+    if (!newDeal.title || !user) return;
+    setIsAddingDeal(true);
+    try {
+      const { error } = await supabase.from("buy_service_deals").insert({
+        ...newDeal,
+        created_by: user.id
+      });
+      if (error) throw error;
+      toast({ title: "Deal added", description: "New service deal has been created." });
+      setNewDeal({ title: "", description: "", price_info: "", telegram_bot_link: "" });
+      fetchAllData();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to add deal.", variant: "destructive" });
+    } finally {
+      setIsAddingDeal(false);
+    }
+  };
+
+  const handleDeleteDeal = async (id: string) => {
+    try {
+      const { error } = await supabase.from("buy_service_deals").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Deal deleted" });
+      fetchAllData();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete deal.", variant: "destructive" });
     }
   };
 
