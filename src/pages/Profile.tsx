@@ -181,6 +181,10 @@ export default function Profile() {
                     )}
                   </div>
 
+                  <div className="pt-2">
+                    <TelegramVerification isAlreadyVerified={profile?.verified} />
+                  </div>
+
                   {isEditing && (
                     <Button onClick={handleSaveProfile} className="gradient-primary border-0" disabled={updateProfile.isPending}>
                       {updateProfile.isPending ? "Saving..." : "Save Changes"}
