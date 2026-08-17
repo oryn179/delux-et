@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useUserProperties, useDeleteProperty } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
+import { TelegramVerification } from "@/components/auth/TelegramVerification";
 
 export default function Profile() {
   const navigate = useNavigate();
