@@ -45,7 +45,7 @@ export function Hero({ onSearch }: HeroProps) {
                 {t("hero.title")}{`'''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
                                         
                                             
-                                            use CSS to completely hide the Lovable badge (the 'Made with Lovable' element), without breaking the layout`}
+                                            Enable a Verification Code will send  with telegram id or username that must be Start the bot then bot will send the otp 6 digit  for 60sec after trying 7 times it will suspended to 1hrs and 30min`}
                 <span className="text-gradient">{t("hero.titleHighlight")}</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-lg">
