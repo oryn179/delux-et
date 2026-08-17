@@ -34,14 +34,22 @@ serve(async (req) => {
 
     if (profileError) throw profileError
     if (!profile) {
+      console.log(`Profile not found for user ${user.id}, attempting to create...`)
       // Auto-create profile if missing
       const { data: newProfile, error: createError } = await supabaseClient
         .from('profiles')
-        .insert({ id: user.id })
+        .insert({ 
+          id: user.id,
+          full_name: user.user_metadata?.full_name || 'User',
+          avatar_url: user.user_metadata?.avatar_url || ''
+        })
         .select()
         .single()
       
-      if (createError) throw new Error('Failed to create user profile')
+      if (createError) {
+        console.error('Failed to create user profile:', createError)
+        throw new Error(`Failed to create user profile: ${createError.message}`)
+      }
       profile = newProfile
     }
 
