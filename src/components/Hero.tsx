@@ -49,10 +49,10 @@ export function Hero({ onSearch }: HeroProps) {
 
 Please think step-by-step in order to resolve it.
 \`\`\`
-Edge function returned 400: Error, {"error":"Profile not found"}
+Edge function returned 400: Error, {"error":"Failed to create user profile"}
 
 {
-  "timestamp": 1786969612609,
+  "timestamp": 1786969751167,
   "error_type": "RUNTIME_ERROR",
   "filename": "supabase/functions/send-telegram-otp/index.ts",
   "lineno": 0,
