@@ -134,4 +134,9 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  /* Hide Lovable Badge */
+  #lovable-badge {
+    display: none !important;
+  }
 }

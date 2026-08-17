@@ -45,7 +45,7 @@ export function Hero({ onSearch }: HeroProps) {
                 {t("hero.title")}{`'''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
                                         
                                             
-                                            I have approved the plan`}
+                                            use CSS to completely hide the Lovable badge (the 'Made with Lovable' element), without breaking the layout`}
                 <span className="text-gradient">{t("hero.titleHighlight")}</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-lg">
