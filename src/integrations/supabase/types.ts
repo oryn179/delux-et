@@ -265,8 +265,13 @@ export type Database = {
           email_verified: boolean | null
           id: string
           name: string
+          otp_code: string | null
+          otp_expires_at: string | null
+          otp_failed_attempts: number | null
+          otp_suspended_until: string | null
           phone: string | null
           phone_verified: boolean | null
+          telegram_id: string | null
           updated_at: string
           user_id: string
           verification_method: string | null
@@ -281,8 +286,13 @@ export type Database = {
           email_verified?: boolean | null
           id?: string
           name: string
+          otp_code?: string | null
+          otp_expires_at?: string | null
+          otp_failed_attempts?: number | null
+          otp_suspended_until?: string | null
           phone?: string | null
           phone_verified?: boolean | null
+          telegram_id?: string | null
           updated_at?: string
           user_id: string
           verification_method?: string | null
@@ -297,8 +307,13 @@ export type Database = {
           email_verified?: boolean | null
           id?: string
           name?: string
+          otp_code?: string | null
+          otp_expires_at?: string | null
+          otp_failed_attempts?: number | null
+          otp_suspended_until?: string | null
           phone?: string | null
           phone_verified?: boolean | null
+          telegram_id?: string | null
           updated_at?: string
           user_id?: string
           verification_method?: string | null
@@ -609,14 +624,7 @@ export type Database = {
     }
     Functions: {
       generate_referral_code: { Args: never; Returns: string }
-      get_public_profile: {
-        Args: { target_user_id: string }
-        Returns: {
-          avatar_url: string
-          name: string
-          user_id: string
-        }[]
-      }
+      get_public_profile: { Args: { profile_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
