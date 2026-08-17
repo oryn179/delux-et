@@ -125,7 +125,7 @@ export default function Admin() {
         supabase.from("property_views").select("*").order("viewed_at", { ascending: false }).limit(500),
         supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("referrals").select("*").order("created_at", { ascending: false }),
-        supabase.from("buy_service_deals").select("*").order("created_at", { ascending: false }),
+        (supabase as any).from("buy_service_deals").select("*").order("created_at", { ascending: false }),
       ]);
 
       setProfiles(profilesRes.data || []);
@@ -323,7 +323,7 @@ export default function Admin() {
     if (!newDeal.title || !user) return;
     setIsAddingDeal(true);
     try {
-      const { error } = await supabase.from("buy_service_deals").insert({
+      const { error } = await (supabase as any).from("buy_service_deals").insert({
         ...newDeal,
         created_by: user.id
       });
@@ -340,7 +340,7 @@ export default function Admin() {
 
   const handleDeleteDeal = async (id: string) => {
     try {
-      const { error } = await supabase.from("buy_service_deals").delete().eq("id", id);
+      const { error } = await (supabase as any).from("buy_service_deals").delete().eq("id", id);
       if (error) throw error;
       toast({ title: "Deal deleted" });
       fetchAllData();
