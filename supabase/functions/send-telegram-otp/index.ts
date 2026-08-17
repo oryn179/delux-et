@@ -30,9 +30,20 @@ serve(async (req) => {
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (profileError || !profile) throw new Error('Profile not found')
+    if (profileError) throw profileError
+    if (!profile) {
+      // Auto-create profile if missing
+      const { data: newProfile, error: createError } = await supabaseClient
+        .from('profiles')
+        .insert({ id: user.id })
+        .select()
+        .single()
+      
+      if (createError) throw new Error('Failed to create user profile')
+      profile = newProfile
+    }
 
     // Check suspension
     if (profile.otp_suspended_until && new Date(profile.otp_suspended_until) > new Date()) {
