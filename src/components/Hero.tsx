@@ -42,7 +42,10 @@ export function Hero({ onSearch }: HeroProps) {
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold leading-tight">
-                {t("hero.title")}{" "}
+                {t("hero.title")}{`'''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
+                                        
+                                            
+                                            I have approved the plan`}
                 <span className="text-gradient">{t("hero.titleHighlight")}</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-lg">
