@@ -45,7 +45,22 @@ export function Hero({ onSearch }: HeroProps) {
                 {t("hero.title")}{`'''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
                                         
                                             
-                                            Made Admin can add new deals on Buy service on bot`}
+                                            For the code present, I get the error below.
+
+Please think step-by-step in order to resolve it.
+\`\`\`
+Edge function returned 400: Error, {"error":"Failed to create user profile: duplicate key value violates unique constraint \\"profiles_user_id_key\\""}
+
+{
+  "timestamp": 1786972587658,
+  "error_type": "RUNTIME_ERROR",
+  "filename": "supabase/functions/send-telegram-otp/index.ts",
+  "lineno": 0,
+  "colno": 0,
+  "stack": "not_applicable",
+  "has_blank_screen": true
+}
+\`\`\``}
                 <span className="text-gradient">{t("hero.titleHighlight")}</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-lg">

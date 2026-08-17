@@ -26,32 +26,61 @@ serve(async (req) => {
 
     if (userError || !user) throw new Error('Unauthorized')
 
-    const { data: profile, error: profileError } = await supabaseClient
+    let { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .maybeSingle()
 
     if (profileError) throw profileError
+    
     if (!profile) {
       console.log(`Profile not found for user ${user.id}, attempting to create...`)
-      // Auto-create profile if missing
-      const { data: newProfile, error: createError } = await supabaseClient
-        .from('profiles')
-        .insert({ 
-          id: user.id,
-          user_id: user.id,
-          name: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
-          avatar_url: user.user_metadata?.avatar_url || ''
-        })
-        .select()
-        .single()
       
-      if (createError) {
-        console.error('Failed to create user profile:', createError)
-        throw new Error(`Failed to create user profile: ${createError.message}`)
+      // Re-check just in case of race conditions
+      const { data: existingProfile } = await supabaseClient
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      if (!existingProfile) {
+        // Auto-create profile if missing
+        const { data: newProfile, error: createError } = await supabaseClient
+          .from('profiles')
+          .insert({ 
+            id: user.id,
+            user_id: user.id,
+            name: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
+            avatar_url: user.user_metadata?.avatar_url || ''
+          })
+          .select()
+          .single()
+        
+        if (createError) {
+          // If it's a duplicate key error, someone else created it or it existed but was cached
+          if (createError.code === '23505') {
+            const { data: retryProfile } = await supabaseClient
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single()
+            profile = retryProfile
+          } else {
+            console.error('Failed to create user profile:', createError)
+            throw new Error(`Failed to create user profile: ${createError.message}`)
+          }
+        } else {
+          profile = newProfile
+        }
+      } else {
+        const { data: retryProfile } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        profile = retryProfile
       }
-      profile = newProfile
     }
 
     // Check suspension
